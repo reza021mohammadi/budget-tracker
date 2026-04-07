@@ -691,39 +691,48 @@ try {
   _auth = getAuth(app);
   const provider = new GoogleAuthProvider();
 
-  // Handle redirect result (for mobile Safari which uses redirect instead of popup)
-  getRedirectResult(_auth).catch(() => {});
+  // Handle the result when Google redirects back to this page after sign-in
+  getRedirectResult(_auth)
+    .then(result => {
+      // onAuthStateChanged handles the user — nothing extra needed here
+    })
+    .catch(e => {
+      // Show the real error code so it's easy to diagnose
+      const msg = e.code || e.message || 'unknown error';
+      document.getElementById('signinSpinner').style.display = 'block';
+      document.getElementById('signinSpinner').textContent = '❌ Error: ' + msg;
+      document.getElementById('googleSignInBtn').style.display = 'flex';
+      console.error('Redirect sign-in error:', e);
+    });
 
   onAuthStateChanged(_auth, (user) => {
     if (user) {
       _uid = user.uid;
       hideSignIn();
-      checkHousehold(_uid);   // ← check/setup household first
+      checkHousehold(_uid);
     } else {
       showSignIn();
       setSyncBadge('', '');
     }
   });
 
-  // Google sign-in button — try popup first, fall back to redirect (for Safari iOS)
+  // Always use redirect — most reliable across Safari Mac, Safari iOS, Chrome
   document.getElementById('googleSignInBtn').addEventListener('click', async () => {
     document.getElementById('signinSpinner').style.display = 'block';
+    document.getElementById('signinSpinner').textContent = '⏳ Redirecting to Google…';
     document.getElementById('googleSignInBtn').style.display = 'none';
     try {
-      await signInWithPopup(_auth, provider);
+      await signInWithRedirect(_auth, provider);
+      // Page will navigate away — code below won't run until user returns
     } catch(e) {
-      if (e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request' || e.code === 'auth/popup-closed-by-user') {
-        // Fall back to redirect for browsers that block popups (e.g. Safari iOS)
-        await signInWithRedirect(_auth, provider);
-      } else {
-        document.getElementById('signinSpinner').textContent = '❌ Sign-in failed. Try again.';
-        document.getElementById('googleSignInBtn').style.display = 'flex';
-        console.error(e);
-      }
+      const msg = e.code || e.message || 'unknown';
+      document.getElementById('signinSpinner').textContent = '❌ Error: ' + msg;
+      document.getElementById('googleSignInBtn').style.display = 'flex';
+      console.error('Sign-in error:', e);
     }
   });
 
-  // Expose sign-out for future use
+  // Expose sign-out
   window.signOut = () => signOut(_auth);
 
 } catch(e) {
