@@ -69,18 +69,22 @@ onAuthStateChanged(auth, async user=>{
   if(!snap.exists()){ document.getElementById('widget').innerHTML='<div class="loading">No data yet.</div><a class="open-btn" href="index.html">Open App</a>'; return; }
 
   const d = snap.data();
-  const payments   = d.payments   || [];
-  const netIncome  = d.netIncome  || 0;
-  const grocery    = d.grocery    || 0;
-  const recreation = d.recreation || 0;
-  const clothes    = d.clothes    || 0;
-  const restaurant = d.restaurant || 0;
-  const other2     = d.other2     || 0;
-  const payday     = d.payday     || 25;
-  const monthly    = payments.filter(p=>!p.onetime);
-  const fixed      = monthly.reduce((s,p)=>s+p.amount,0);
-  const total      = fixed+grocery+recreation+clothes+restaurant+other2;
-  const remaining  = netIncome-total;
+  const payments      = d.payments       || [];
+  const monthlyBudgets= d.monthlyBudgets || {};
+  const now           = new Date();
+  const key           = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const b             = monthlyBudgets[key] || {};
+  const netIncome     = b.netIncome  || d.netIncome  || 0;
+  const grocery       = b.grocery    || d.grocery    || 0;
+  const recreation    = b.recreation || d.recreation || 0;
+  const clothes       = b.clothes    || d.clothes    || 0;
+  const restaurant    = b.restaurant || d.restaurant || 0;
+  const other2        = b.other2     || d.other2     || 0;
+  const payday        = d.payday     || 25;
+  const monthly       = payments.filter(p=>!p.onetime);
+  const fixed         = monthly.reduce((s,p)=>s+p.amount,0);
+  const total         = fixed+grocery+recreation+clothes+restaurant+other2;
+  const remaining     = netIncome-total;
   const daysLeft   = daysUntil(payday);
 
   // Next 3 payments
