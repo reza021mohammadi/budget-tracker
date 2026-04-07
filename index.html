@@ -6,8 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Budget">
-<link rel="apple-touch-icon" href="icon.png">
-<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="https://reza021mohammadi.github.io/budget-tracker/icon.png">
+<link rel="icon" type="image/png" href="https://reza021mohammadi.github.io/budget-tracker/icon.png">
 <title>Budget Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -514,6 +514,15 @@ canvas{width:100%!important;display:block;}
 
 <!-- ══════════ OVERVIEW ══════════ -->
 <div class="view active" id="view-overview">
+  <!-- Month navigator -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 4px;">
+    <button class="cal-nav-btn" onclick="changeBudgetMonth(-1)">‹</button>
+    <div style="text-align:center">
+      <div style="font-size:15px;font-weight:700;color:var(--text)" id="budgetMonthLabel">—</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">Tap cards to edit budget for this month</div>
+    </div>
+    <button class="cal-nav-btn" onclick="changeBudgetMonth(1)">›</button>
+  </div>
   <div class="summary-row">
     <!-- Income -->
     <div class="summary-card c-income">
@@ -1052,12 +1061,21 @@ async function leaveHousehold() {
 
 function applyCloudData(d) {
   if (d.payments)         { payments    = d.payments;    localStorage.setItem('bgt_p',  JSON.stringify(d.payments)); }
-  if (d.netIncome!=null)  { netIncome   = d.netIncome;   localStorage.setItem('bgt_i',  d.netIncome); }
-  if (d.grocery!=null)    { grocery     = d.grocery;     localStorage.setItem('bgt_g',  d.grocery); }
-  if (d.recreation!=null) { recreation  = d.recreation;  localStorage.setItem('bgt_r',  d.recreation); }
-  if (d.clothes!=null)    { clothes     = d.clothes;     localStorage.setItem('bgt_cl', d.clothes); }
-  if (d.restaurant!=null) { restaurant  = d.restaurant;  localStorage.setItem('bgt_rs', d.restaurant); }
-  if (d.other2!=null)     { other2      = d.other2;      localStorage.setItem('bgt_ot', d.other2); }
+  if (d.monthlyBudgets!=null){ monthlyBudgets=d.monthlyBudgets; localStorage.setItem('bgt_mb',JSON.stringify(d.monthlyBudgets)); syncBudgetVars(); }
+  // Legacy migration — if cloud has old global fields but no monthlyBudgets
+  else if (d.netIncome!=null) {
+    const key = budgetKey(new Date().getFullYear(), new Date().getMonth());
+    monthlyBudgets[key] = {
+      netIncome:  d.netIncome  || 0,
+      grocery:    d.grocery    || 0,
+      recreation: d.recreation || 0,
+      clothes:    d.clothes    || 0,
+      restaurant: d.restaurant || 0,
+      other2:     d.other2     || 0,
+    };
+    localStorage.setItem('bgt_mb',JSON.stringify(monthlyBudgets));
+    syncBudgetVars();
+  }
   if (d.meals!=null)      { meals       = d.meals;       localStorage.setItem('bgt_m',  JSON.stringify(d.meals)); }
   if (d.mealLibrary!=null){ mealLibrary = d.mealLibrary; localStorage.setItem('bgt_ml', JSON.stringify(d.mealLibrary)); }
   if (d.sinkingFunds!=null){ sinkingFunds = d.sinkingFunds; localStorage.setItem('bgt_sf', JSON.stringify(d.sinkingFunds)); }
@@ -1177,7 +1195,7 @@ async function saveToCloud() {
   setSyncBadge('syncing', '⏳ Saving…');
   try {
     await setDoc(doc(_db, 'households', _familyCode, 'data', 'main'), {
-      payments, netIncome, grocery, recreation, clothes, restaurant, other2, meals, mealLibrary, sinkingFunds, spending, customCategories, payday, savingsGoal, bufferAmt,
+      payments, monthlyBudgets, meals, mealLibrary, sinkingFunds, spending, customCategories, payday, savingsGoal, bufferAmt,
       updatedAt: new Date().toISOString(),
       updatedBy: _auth && _auth.currentUser ? (_auth.currentUser.displayName || _auth.currentUser.email || 'Unknown') : 'Unknown'
     });
@@ -1217,12 +1235,51 @@ const DEF = [
 ];
 
 let payments   = JSON.parse(localStorage.getItem('bgt_p')||'null') || JSON.parse(JSON.stringify(DEF));
-let netIncome  = parseFloat(localStorage.getItem('bgt_i') ||'3828');
-let grocery    = parseFloat(localStorage.getItem('bgt_g') ||'300');
-let recreation = parseFloat(localStorage.getItem('bgt_r') ||'0');
-let clothes    = parseFloat(localStorage.getItem('bgt_cl')||'0');
-let restaurant = parseFloat(localStorage.getItem('bgt_rs')||'0');
-let other2     = parseFloat(localStorage.getItem('bgt_ot')||'0');
+// Monthly budgets: { 'YYYY-MM': { netIncome, grocery, recreation, clothes, restaurant, other2 } }
+let monthlyBudgets = JSON.parse(localStorage.getItem('bgt_mb')||'{}');
+// Migrate old global values into current month if no monthly data exists yet
+const _nowM = new Date();
+const _curKey = `${_nowM.getFullYear()}-${String(_nowM.getMonth()+1).padStart(2,'0')}`;
+if(!monthlyBudgets[_curKey]) {
+  monthlyBudgets[_curKey] = {
+    netIncome:  parseFloat(localStorage.getItem('bgt_i') ||'3828'),
+    grocery:    parseFloat(localStorage.getItem('bgt_g') ||'300'),
+    recreation: parseFloat(localStorage.getItem('bgt_r') ||'0'),
+    clothes:    parseFloat(localStorage.getItem('bgt_cl')||'0'),
+    restaurant: parseFloat(localStorage.getItem('bgt_rs')||'0'),
+    other2:     parseFloat(localStorage.getItem('bgt_ot')||'0'),
+  };
+}
+// Current viewed budget month
+let budgetMonth = { year: _nowM.getFullYear(), month: _nowM.getMonth() };
+
+// Helpers to get/set current month's budget
+function budgetKey(y, m) { return `${y}-${String(m+1).padStart(2,'0')}`; }
+function getBudget() {
+  const key = budgetKey(budgetMonth.year, budgetMonth.month);
+  // If no budget for this month, copy from previous month or use defaults
+  if(!monthlyBudgets[key]) {
+    const prev = budgetKey(budgetMonth.year, budgetMonth.month-1 < 0 ? 11 : budgetMonth.month-1);
+    const prevYear = budgetMonth.month === 0 ? budgetMonth.year-1 : budgetMonth.year;
+    const prevKey = budgetKey(prevYear, budgetMonth.month === 0 ? 11 : budgetMonth.month-1);
+    monthlyBudgets[key] = monthlyBudgets[prevKey]
+      ? {...monthlyBudgets[prevKey]}
+      : {netIncome:3828,grocery:300,recreation:0,clothes:0,restaurant:0,other2:0};
+  }
+  return monthlyBudgets[key];
+}
+// Expose current month values as top-level vars for backward compat with all helper functions
+function syncBudgetVars() {
+  const b = getBudget();
+  netIncome  = b.netIncome  || 0;
+  grocery    = b.grocery    || 0;
+  recreation = b.recreation || 0;
+  clothes    = b.clothes    || 0;
+  restaurant = b.restaurant || 0;
+  other2     = b.other2     || 0;
+}
+let netIncome=0, grocery=0, recreation=0, clothes=0, restaurant=0, other2=0;
+syncBudgetVars();
 let meals      = JSON.parse(localStorage.getItem('bgt_m') ||'{}');
 let mealLibrary= JSON.parse(localStorage.getItem('bgt_ml')||'[]');
 let payday     = parseInt(localStorage.getItem('bgt_pd')  ||'25');
@@ -1240,12 +1297,10 @@ let isLightMode = localStorage.getItem('bgt_theme') === 'light';
 function save(){
   // Save locally first (instant)
   localStorage.setItem('bgt_p',JSON.stringify(payments));
+  localStorage.setItem('bgt_mb',JSON.stringify(monthlyBudgets));
+  // Keep legacy keys for backward compat
   localStorage.setItem('bgt_i',netIncome);
   localStorage.setItem('bgt_g',grocery);
-  localStorage.setItem('bgt_r',recreation);
-  localStorage.setItem('bgt_cl',clothes);
-  localStorage.setItem('bgt_rs',restaurant);
-  localStorage.setItem('bgt_ot',other2);
   localStorage.setItem('bgt_m',JSON.stringify(meals));
   localStorage.setItem('bgt_ml',JSON.stringify(mealLibrary));
   localStorage.setItem('bgt_sf',JSON.stringify(sinkingFunds));
@@ -1339,11 +1394,17 @@ function switchView(v,el){
 
 // ════════ RENDER OVERVIEW ════════
 function render(){
+  syncBudgetVars();
   const now=today(), monthly=payments.filter(p=>!p.onetime);
   const fixed=monthly.reduce((s,p)=>s+p.amount,0);
   const total=fixed+grocery+recreation+clothes+restaurant+other2;
   const rem=netIncome-total;
   const pct=Math.min(100,(total/netIncome)*100);
+
+  // Budget month label
+  const bml = document.getElementById('budgetMonthLabel');
+  if(bml) bml.textContent = new Date(budgetMonth.year, budgetMonth.month, 1)
+    .toLocaleDateString('en-DE',{month:'long',year:'numeric'});
 
   // Header
   document.getElementById('headerDate').textContent=now.toLocaleDateString('en-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -1497,9 +1558,20 @@ function buildForecast(){
   return Array.from({length:6},(_,i)=>{
     const d=new Date(now.getFullYear(),now.getMonth()+i,1);
     const y=d.getFullYear(),m=d.getMonth();
+    const key=budgetKey(y,m);
+    const b=monthlyBudgets[key]||getBudget(); // fall back to current month if not set
     const fixed=fixedCostsForMonth(y,m);
-    const total=fixed+grocery+recreation+clothes+restaurant+other2;
-    return{year:y,month:m,label:d.toLocaleDateString('en-DE',{month:'short',year:'numeric'}),short:d.toLocaleDateString('en-DE',{month:'short'}),fixed,grocery,recreation,clothes,restaurant,other2,total,net:netIncome-total,isCurrent:i===0,payments:payments.filter(p=>!p.onetime).map(p=>({...p,active:isActiveInMonth(p,y,m)}))};
+    const varCosts=(b.grocery||0)+(b.recreation||0)+(b.clothes||0)+(b.restaurant||0)+(b.other2||0);
+    const total=fixed+varCosts;
+    const ni=b.netIncome||netIncome;
+    return{year:y,month:m,
+      label:d.toLocaleDateString('en-DE',{month:'short',year:'numeric'}),
+      short:d.toLocaleDateString('en-DE',{month:'short'}),
+      fixed,
+      grocery:b.grocery||0,recreation:b.recreation||0,
+      clothes:b.clothes||0,restaurant:b.restaurant||0,other2:b.other2||0,
+      total,net:ni-total,netIncome:ni,isCurrent:i===0,
+      payments:payments.filter(p=>!p.onetime).map(p=>({...p,active:isActiveInMonth(p,y,m)}))};
   });
 }
 
@@ -1709,11 +1781,12 @@ function copyExport(){
 // ════════ ACTIONS ════════
 function updateField(f){
   if(f==='income'){const v=parseFloat(document.getElementById('incomeInput').value);if(!isNaN(v)&&v>0)netIncome=v;}
-  if(f==='grocery'){const v=parseFloat(document.getElementById('groceryInput').value);if(!isNaN(v)&&v>=0)grocery=v;}
-  if(f==='recreation'){const v=parseFloat(document.getElementById('recreationInput').value);if(!isNaN(v)&&v>=0)recreation=v;}
-  if(f==='clothes'){const v=parseFloat(document.getElementById('clothesInput').value);if(!isNaN(v)&&v>=0)clothes=v;}
-  if(f==='restaurant'){const v=parseFloat(document.getElementById('restaurantInput').value);if(!isNaN(v)&&v>=0)restaurant=v;}
-  if(f==='other2'){const v=parseFloat(document.getElementById('other2Input').value);if(!isNaN(v)&&v>=0)other2=v;}
+  if(f==='income'   ){const v=parseFloat(document.getElementById('incomeInput').value);   if(!isNaN(v)&&v>=0){getBudget().netIncome =v; netIncome =v;}}
+  if(f==='grocery'  ){const v=parseFloat(document.getElementById('groceryInput').value);   if(!isNaN(v)&&v>=0){getBudget().grocery   =v; grocery   =v;}}
+  if(f==='recreation'){const v=parseFloat(document.getElementById('recreationInput').value);if(!isNaN(v)&&v>=0){getBudget().recreation=v; recreation=v;}}
+  if(f==='clothes'  ){const v=parseFloat(document.getElementById('clothesInput').value);   if(!isNaN(v)&&v>=0){getBudget().clothes   =v; clothes   =v;}}
+  if(f==='restaurant'){const v=parseFloat(document.getElementById('restaurantInput').value);if(!isNaN(v)&&v>=0){getBudget().restaurant=v; restaurant=v;}}
+  if(f==='other2'   ){const v=parseFloat(document.getElementById('other2Input').value);    if(!isNaN(v)&&v>=0){getBudget().other2    =v; other2    =v;}}
   if(f==='savings'){const v=parseFloat(document.getElementById('savingsInput').value);if(!isNaN(v)&&v>=0)savingsGoal=v;}
   if(f==='buffer'){const v=parseFloat(document.getElementById('bufferInput').value);if(!isNaN(v)&&v>=0)bufferAmt=v;}
   save(); render(); if(activeView==='forecast') renderForecast();
@@ -2332,10 +2405,14 @@ function attachIngSwipe(el, onDelete) {
 
 // ════════ SPENDING TRACKER ════════
 function spendingKey(y, m) { return `${y}-${String(m+1).padStart(2,'0')}`; }
-function changeSpendingMonth(dir) {
-  spendingMonth.month += dir;
-  if(spendingMonth.month > 11){ spendingMonth.month=0; spendingMonth.year++; }
-  if(spendingMonth.month < 0) { spendingMonth.month=11; spendingMonth.year--; }
+function changeBudgetMonth(dir) {
+  budgetMonth.month += dir;
+  if(budgetMonth.month > 11){ budgetMonth.month=0; budgetMonth.year++; }
+  if(budgetMonth.month < 0) { budgetMonth.month=11; budgetMonth.year--; }
+  // Keep spending month in sync
+  spendingMonth = {...budgetMonth};
+  syncBudgetVars();
+  render();
   renderSpending();
 }
 function renderSpending() {
@@ -2571,7 +2648,8 @@ window.toggleIngredient  = toggleIngredient;
 window.onMealSelectChange= onMealSelectChange;
 window.openLibraryModal  = openLibraryModal;
 window.closeLibraryModal = closeLibraryModal;
-window.onCategoryChange  = onCategoryChange;
+window.changeBudgetMonth  = changeBudgetMonth;
+window.onCategoryChange   = onCategoryChange;
 window.populateCategorySelect = populateCategorySelect;
 window.captureIngInputs  = captureIngInputs;
 window.captureLibIngInputs=captureLibIngInputs;
