@@ -290,6 +290,62 @@ canvas{width:100%!important;display:block;}
 .family-code-badge{display:none;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:5px 9px;font-size:11px;color:var(--muted);font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .family-code-badge:active{background:rgba(255,78,78,.15);border-color:rgba(255,78,78,.3);color:var(--danger);}
 
+/* ── MEALS PLANNER ── */
+.meals-sub-tabs{display:flex;gap:0;margin:10px 16px 0;background:var(--surface);border-radius:10px;border:1px solid var(--border);padding:3px;}
+.meals-stab{flex:1;text-align:center;font-size:12px;font-weight:600;padding:7px 4px;border-radius:8px;color:var(--muted);cursor:pointer;transition:all .2s;}
+.meals-stab.active{background:var(--surface2);color:var(--accent2);border:1px solid rgba(124,111,239,.4);}
+.meals-view{display:none;padding:0 0 16px;}
+.meals-view.active{display:block;}
+.meals-section-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;font-weight:600;padding:12px 16px 6px;}
+.shop-card{background:var(--surface);border:1px solid rgba(245,165,35,.3);border-radius:14px;margin:0 16px 10px;overflow:hidden;}
+.shop-card-header{padding:12px 14px 10px;}
+.shop-card-title{font-size:10px;color:var(--orange);text-transform:uppercase;letter-spacing:.9px;font-weight:600;}
+.shop-card-count{font-family:'DM Serif Display',serif;font-size:22px;color:var(--orange);margin-top:3px;}
+.shop-item{display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--border);font-size:13px;}
+.shop-day-tag{font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(245,165,35,.12);color:var(--orange);border:1px solid rgba(245,165,35,.25);flex-shrink:0;width:38px;text-align:center;}
+.shop-ing-name{flex:1;color:var(--text);}
+.day-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:0 16px 8px;overflow:hidden;}
+.day-card.is-today{border-color:rgba(124,111,239,.4);}
+.day-card-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;}
+.day-card-left .day-name{font-size:14px;font-weight:700;color:var(--text);}
+.day-card-left .day-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.today-badge{font-size:9px;font-weight:700;background:rgba(124,111,239,.2);color:var(--accent2);border-radius:99px;padding:2px 7px;margin-left:6px;border:1px solid rgba(124,111,239,.3);}
+.missing-badge{font-size:10px;padding:3px 8px;border-radius:99px;background:rgba(245,165,35,.12);color:var(--orange);border:1px solid rgba(245,165,35,.3);}
+.all-good-badge{font-size:10px;padding:3px 8px;border-radius:99px;background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.25);}
+.day-card-body{border-top:1px solid var(--border);padding:10px 14px;}
+.meal-type-row{display:flex;align-items:center;gap:8px;padding:5px 0;}
+.meal-type-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.dot-breakfast{background:#FAC775;}.dot-lunch{background:#5DCAA5;}.dot-dinner{background:#7F77DD;}
+.meal-type-label{font-size:10px;color:var(--muted);font-weight:600;width:58px;flex-shrink:0;}
+.meal-type-name{font-size:13px;color:var(--text);flex:1;}
+.meal-buy-badge{font-size:9px;padding:2px 6px;border-radius:99px;background:rgba(245,165,35,.12);color:var(--orange);border:1px solid rgba(245,165,35,.25);}
+.add-meal-btn{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);padding:6px 0;border-top:1px solid var(--border);margin-top:4px;cursor:pointer;background:none;border-left:none;border-right:none;border-bottom:none;width:100%;font-family:'DM Sans',sans-serif;}
+.ing-section{border-top:1px solid var(--border);margin-top:8px;padding-top:8px;}
+.ing-section-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:6px;}
+.ing-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid rgba(46,46,62,.5);}
+.ing-row:first-child{border-top:none;}
+.ing-check-btn{width:18px;height:18px;border-radius:4px;border:1px solid var(--border);background:none;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;padding:0;}
+.ing-check-btn.have{background:rgba(62,207,142,.15);border-color:rgba(62,207,142,.4);color:var(--green);}
+.ing-check-btn.miss{background:rgba(245,165,35,.1);border-color:rgba(245,165,35,.3);}
+.ing-name-text{flex:1;font-size:12px;color:var(--text);}
+.ing-buy-tag{font-size:9px;color:var(--orange);}
+.delete-meal-btn{background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;padding:2px 4px;flex-shrink:0;}
+.cal-month-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 4px;}
+.cal-month-label{font-size:14px;font-weight:700;color:var(--text);}
+.cal-nav-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 12px;color:var(--text);font-size:14px;cursor:pointer;}
+.plan-btn{font-size:10px;color:var(--muted);border:1px dashed var(--border);border-radius:99px;padding:3px 10px;background:none;cursor:pointer;font-family:'DM Sans',sans-serif;}
+/* Meals modal */
+.meal-type-selector{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
+.mts-btn{padding:10px 4px;border-radius:11px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:all .2s;}
+.mts-btn.selected{border-color:var(--accent2);background:rgba(124,111,239,.12);color:var(--accent2);}
+.ing-input-row{display:flex;gap:8px;align-items:center;margin-bottom:7px;}
+.ing-input-row input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:9px 11px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;}
+.ing-input-row input:focus{border-color:var(--accent2);}
+.ing-have-toggle{padding:8px 10px;border-radius:9px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;}
+.ing-have-toggle.have{background:rgba(62,207,142,.12);border-color:rgba(62,207,142,.35);color:var(--green);}
+.ing-del{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px;}
+.add-ing-btn{width:100%;padding:9px;border:1px dashed var(--border);border-radius:9px;background:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;margin-bottom:10px;}
+
 /* EXPORT sheet */
 .export-sheet{background:var(--surface2);border-radius:11px;padding:14px;font-size:12px;color:var(--muted);margin-top:10px;white-space:pre;overflow-x:auto;line-height:1.7;}
 </style>
@@ -365,6 +421,7 @@ canvas{width:100%!important;display:block;}
   <div class="nav-tab"        data-v="forecast"  onclick="switchView('forecast',this)">Forecast</div>
   <div class="nav-tab"        data-v="list"      onclick="switchView('list',this)">Payments</div>
   <div class="nav-tab"        data-v="export"    onclick="switchView('export',this)">Export</div>
+  <div class="nav-tab"        data-v="meals"     onclick="switchView('meals',this)">🍽 Meals</div>
 </div>
 
 <!-- ══ BUFFER WARNING ══ -->
@@ -528,7 +585,68 @@ canvas{width:100%!important;display:block;}
   </div>
 </div>
 
+<!-- ══════════ MEALS VIEW ══════════ -->
+<div class="view" id="view-meals">
+  <!-- Sub-tabs -->
+  <div class="meals-sub-tabs">
+    <div class="meals-stab active" onclick="switchMealsTab('overview',this)">Next 3 days</div>
+    <div class="meals-stab" onclick="switchMealsTab('calendar',this)">Calendar</div>
+  </div>
+
+  <!-- Next 3 days -->
+  <div class="meals-view active" id="meals-overview">
+    <div class="meals-section-label">🛒 Shopping list</div>
+    <div class="shop-card" id="shopCard">
+      <div class="shop-card-header">
+        <div class="shop-card-title">Missing ingredients</div>
+        <div class="shop-card-count" id="shopCount">0 items</div>
+      </div>
+      <div id="shopList"></div>
+    </div>
+    <div class="meals-section-label">Meals — next 3 days</div>
+    <div id="overviewDays"></div>
+  </div>
+
+  <!-- Calendar -->
+  <div class="meals-view" id="meals-calendar">
+    <div class="cal-month-nav">
+      <button class="cal-nav-btn" onclick="changeCalMonth(-1)">‹</button>
+      <div class="cal-month-label" id="calMonthLabel">April 2026</div>
+      <button class="cal-nav-btn" onclick="changeCalMonth(1)">›</button>
+    </div>
+    <div id="calDays"></div>
+  </div>
+</div>
+
 <button class="fab" onclick="openModal()">+</button>
+
+<!-- ══ MEAL MODAL ══ -->
+<div class="modal-overlay" id="mealModalOverlay" onclick="closeOnBg(event,'mealModalOverlay')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add Meal</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px" id="mealModalDate"></div>
+    <div class="form-group">
+      <label class="form-label">Meal type</label>
+      <div class="meal-type-selector">
+        <button class="mts-btn selected" onclick="selectMealType('breakfast',this)">🌅 Breakfast</button>
+        <button class="mts-btn" onclick="selectMealType('lunch',this)">☀️ Lunch</button>
+        <button class="mts-btn" onclick="selectMealType('dinner',this)">🌙 Dinner</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Meal name</label>
+      <input class="form-input" id="mealNameInput" type="text" placeholder="e.g. Greek salad">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Ingredients</label>
+      <div id="ingInputList"></div>
+      <button class="add-ing-btn" onclick="addIngredientInput()">+ Add ingredient</button>
+    </div>
+    <button class="btn-submit" onclick="saveMeal()">Save Meal</button>
+    <button class="btn-cancel" onclick="closeMealModal()">Cancel</button>
+  </div>
+</div>
 
 <!-- ══ ADD PAYMENT MODAL ══ -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeOnBg(event,'modalOverlay')">
@@ -726,6 +844,7 @@ function applyCloudData(d) {
   if (d.netIncome!=null)  { netIncome   = d.netIncome;   localStorage.setItem('bgt_i',  d.netIncome); }
   if (d.grocery!=null)    { grocery     = d.grocery;     localStorage.setItem('bgt_g',  d.grocery); }
   if (d.recreation!=null) { recreation  = d.recreation;  localStorage.setItem('bgt_r',  d.recreation); }
+  if (d.meals!=null)      { meals       = d.meals;       localStorage.setItem('bgt_m',  JSON.stringify(d.meals)); }
   if (d.payday!=null)     { payday      = d.payday;      localStorage.setItem('bgt_pd', d.payday); }
   if (d.savingsGoal!=null){ savingsGoal = d.savingsGoal; localStorage.setItem('bgt_sg', d.savingsGoal); }
   if (d.bufferAmt!=null)  { bufferAmt   = d.bufferAmt;   localStorage.setItem('bgt_bf', d.bufferAmt); }
@@ -832,7 +951,7 @@ async function saveToCloud() {
   setSyncBadge('syncing', '⏳ Saving…');
   try {
     await setDoc(doc(_db, 'households', _familyCode, 'data', 'main'), {
-      payments, netIncome, grocery, recreation, payday, savingsGoal, bufferAmt,
+      payments, netIncome, grocery, recreation, meals, payday, savingsGoal, bufferAmt,
       updatedAt: new Date().toISOString()
     });
     setSyncBadge('synced', '✅ Synced');
@@ -874,6 +993,7 @@ let payments   = JSON.parse(localStorage.getItem('bgt_p')||'null') || JSON.parse
 let netIncome  = parseFloat(localStorage.getItem('bgt_i') ||'3828');
 let grocery    = parseFloat(localStorage.getItem('bgt_g') ||'300');
 let recreation = parseFloat(localStorage.getItem('bgt_r') ||'0');
+let meals      = JSON.parse(localStorage.getItem('bgt_m') ||'{}');
 let payday     = parseInt(localStorage.getItem('bgt_pd')  ||'25');
 let savingsGoal= parseFloat(localStorage.getItem('bgt_sg')||'500');
 let bufferAmt  = parseFloat(localStorage.getItem('bgt_bf')||'500');
@@ -887,6 +1007,7 @@ function save(){
   localStorage.setItem('bgt_i',netIncome);
   localStorage.setItem('bgt_g',grocery);
   localStorage.setItem('bgt_r',recreation);
+  localStorage.setItem('bgt_m',JSON.stringify(meals));
   localStorage.setItem('bgt_pd',payday);
   localStorage.setItem('bgt_sg',savingsGoal);
   localStorage.setItem('bgt_bf',bufferAmt);
@@ -956,6 +1077,7 @@ function switchView(v,el){
   if(el) el.classList.add('active');
   if(v==='forecast') renderForecast();
   if(v==='export')   renderExport();
+  if(v==='meals')    renderMeals();
 }
 
 // ════════ RENDER OVERVIEW ════════
@@ -1324,7 +1446,273 @@ function openPaydayModal(){
 }
 function savePayday(){payday=tempPayday;save();document.getElementById('paydayModalOverlay').classList.remove('open');render();}
 
-// ── Expose functions for HTML onclick (required for type="module") ─
+// ════════ MEALS PLANNER ════════
+let activeMealsTab = 'overview';
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let mealModalDate = null;
+let mealModalType = 'breakfast';
+let modalIngredients = [];
+
+function dateKey(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function todayKey() { const n=new Date(); return dateKey(n.getFullYear(),n.getMonth(),n.getDate()); }
+function offsetDateKey(offset) {
+  const d=new Date(); d.setDate(d.getDate()+offset);
+  return dateKey(d.getFullYear(),d.getMonth(),d.getDate());
+}
+function fmtDateLabel(key) {
+  const [y,m,d]=key.split('-').map(Number);
+  return new Date(y,m-1,d).toLocaleDateString('en-DE',{weekday:'long',day:'numeric',month:'short'});
+}
+function fmtShortLabel(key) {
+  const [y,m,d]=key.split('-').map(Number);
+  const dt=new Date(y,m-1,d);
+  const now=new Date();
+  if(key===todayKey()) return 'Today';
+  if(key===offsetDateKey(1)) return 'Tomorrow';
+  return dt.toLocaleDateString('en-DE',{weekday:'short',day:'numeric'});
+}
+
+function getMissingIngredients(dateKeys) {
+  const missing=[];
+  dateKeys.forEach(key=>{
+    const day=meals[key]||{};
+    ['breakfast','lunch','dinner'].forEach(type=>{
+      const meal=day[type];
+      if(!meal) return;
+      (meal.ingredients||[]).forEach(ing=>{
+        if(!ing.have) missing.push({key,type,name:ing.name,dayLabel:fmtShortLabel(key)});
+      });
+    });
+  });
+  return missing;
+}
+
+function switchMealsTab(tab, el) {
+  activeMealsTab=tab;
+  document.querySelectorAll('.meals-stab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.meals-view').forEach(x=>x.classList.remove('active'));
+  document.getElementById('meals-'+tab).classList.add('active');
+  if(tab==='overview') renderMealsOverview();
+  if(tab==='calendar') renderMealsCalendar();
+}
+
+function renderMeals() {
+  if(activeMealsTab==='overview') renderMealsOverview();
+  else renderMealsCalendar();
+}
+
+function renderMealsOverview() {
+  const keys=[todayKey(), offsetDateKey(1), offsetDateKey(2)];
+  const missing=getMissingIngredients(keys);
+  // Shopping list
+  document.getElementById('shopCount').textContent=missing.length+' item'+(missing.length!==1?'s':'');
+  const shopList=document.getElementById('shopList');
+  if(missing.length===0){
+    shopList.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--muted)">All ingredients ready ✅</div>';
+  } else {
+    shopList.innerHTML=missing.map(x=>`
+      <div class="shop-item">
+        <span class="shop-day-tag">${x.dayLabel}</span>
+        <span class="shop-ing-name">${x.name}</span>
+      </div>`).join('');
+  }
+  // Day cards
+  const container=document.getElementById('overviewDays');
+  container.innerHTML='';
+  keys.forEach(key=>container.appendChild(buildDayCard(key, true)));
+}
+
+function renderMealsCalendar() {
+  document.getElementById('calMonthLabel').textContent=
+    new Date(calYear,calMonth,1).toLocaleDateString('en-DE',{month:'long',year:'numeric'});
+  const container=document.getElementById('calDays');
+  container.innerHTML='';
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const today=todayKey();
+  for(let d=1;d<=daysInMonth;d++){
+    const key=dateKey(calYear,calMonth,d);
+    const dayObj=meals[key];
+    const isPast=key<today;
+    if(isPast && !dayObj) continue; // hide past empty days
+    container.appendChild(buildDayCard(key, key===today));
+  }
+}
+
+function buildDayCard(key, autoExpand) {
+  const dayObj=meals[key]||{};
+  const today=todayKey();
+  const isToday=key===today;
+  const types=['breakfast','lunch','dinner'];
+  const missingCount=getMissingIngredients([key]).length;
+  const plannedMeals=types.filter(t=>dayObj[t]);
+  const subtitle=plannedMeals.length===0?'No meals planned':
+    plannedMeals.map(t=>dayObj[t].name).join(' · ');
+
+  const card=document.createElement('div');
+  card.className='day-card'+(isToday?' is-today':'');
+  card.dataset.key=key;
+
+  const badgeHtml=missingCount>0
+    ?`<span class="missing-badge">${missingCount} missing</span>`
+    :plannedMeals.length>0
+    ?`<span class="all-good-badge">✅ Ready</span>`
+    :`<button class="plan-btn" onclick="event.stopPropagation();openMealModal('${key}')">+ Plan</button>`;
+
+  // Ingredient rows for all planned meals combined
+  const allIngs=[];
+  types.forEach(t=>{ if(dayObj[t]) (dayObj[t].ingredients||[]).forEach(ing=>allIngs.push({...ing,mealType:t})); });
+
+  const mealRowsHtml=types.map(t=>{
+    if(!dayObj[t]) return `<div class="meal-type-row">
+      <div class="meal-type-dot dot-${t}"></div>
+      <span class="meal-type-label">${t.charAt(0).toUpperCase()+t.slice(1)}</span>
+      <button class="plan-btn" onclick="event.stopPropagation();openMealModal('${key}','${t}')">+ Add</button>
+    </div>`;
+    const hasMissing=(dayObj[t].ingredients||[]).some(i=>!i.have);
+    return `<div class="meal-type-row">
+      <div class="meal-type-dot dot-${t}"></div>
+      <span class="meal-type-label">${t.charAt(0).toUpperCase()+t.slice(1)}</span>
+      <span class="meal-type-name">${dayObj[t].name}</span>
+      ${hasMissing?'<span class="meal-buy-badge">buy</span>':''}
+      <button class="delete-meal-btn" onclick="event.stopPropagation();deleteMeal('${key}','${t}')">×</button>
+    </div>`;
+  }).join('');
+
+  const ingRowsHtml=allIngs.length===0?'':`
+    <div class="ing-section">
+      <div class="ing-section-title">Ingredients</div>
+      ${allIngs.map((ing,i)=>`
+        <div class="ing-row">
+          <button class="ing-check-btn ${ing.have?'have':'miss'}" onclick="event.stopPropagation();toggleIngredient('${key}','${ing.mealType}',${(dayObj[ing.mealType].ingredients||[]).indexOf(ing)})">${ing.have?'✓':''}</button>
+          <span class="ing-name-text">${ing.name}</span>
+          ${!ing.have?'<span class="ing-buy-tag">buy</span>':''}
+        </div>`).join('')}
+    </div>`;
+
+  card.innerHTML=`
+    <div class="day-card-header" onclick="toggleDayCard(this)">
+      <div class="day-card-left">
+        <div class="day-name">${fmtDateLabel(key)}${isToday?'<span class="today-badge">Today</span>':''}</div>
+        <div class="day-sub">${subtitle}</div>
+      </div>
+      ${badgeHtml}
+    </div>
+    <div class="day-card-body" style="display:${autoExpand?'block':'none'}">
+      ${mealRowsHtml}
+      ${ingRowsHtml}
+      <button class="add-meal-btn" onclick="event.stopPropagation();openMealModal('${key}')">+ Add another meal</button>
+    </div>`;
+  return card;
+}
+
+function toggleDayCard(header) {
+  const body=header.nextElementSibling;
+  body.style.display=body.style.display==='none'?'block':'none';
+}
+
+function changeCalMonth(dir) {
+  calMonth+=dir;
+  if(calMonth>11){calMonth=0;calYear++;}
+  if(calMonth<0){calMonth=11;calYear--;}
+  renderMealsCalendar();
+}
+
+// ── Meal Modal ──
+function openMealModal(key, type='breakfast') {
+  mealModalDate=key;
+  mealModalType=type;
+  modalIngredients=[];
+  document.getElementById('mealModalDate').textContent=fmtDateLabel(key);
+  document.getElementById('mealNameInput').value='';
+  // Pre-fill name if editing
+  const existing=(meals[key]||{})[type];
+  if(existing){
+    document.getElementById('mealNameInput').value=existing.name;
+    modalIngredients=existing.ingredients.map(i=>({...i}));
+  }
+  document.querySelectorAll('.mts-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll('.mts-btn').forEach(b=>{if(b.textContent.toLowerCase().includes(type))b.classList.add('selected');});
+  renderIngInputs();
+  document.getElementById('mealModalOverlay').classList.add('open');
+}
+function closeMealModal(){
+  document.getElementById('mealModalOverlay').classList.remove('open');
+}
+function selectMealType(type, btn) {
+  mealModalType=type;
+  document.querySelectorAll('.mts-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  // Load existing meal if any
+  const existing=(meals[mealModalDate]||{})[type];
+  if(existing){
+    document.getElementById('mealNameInput').value=existing.name;
+    modalIngredients=existing.ingredients.map(i=>({...i}));
+  } else {
+    document.getElementById('mealNameInput').value='';
+    modalIngredients=[];
+  }
+  renderIngInputs();
+}
+function addIngredientInput(name='', have=false) {
+  modalIngredients.push({name,have});
+  renderIngInputs();
+}
+function renderIngInputs() {
+  const list=document.getElementById('ingInputList');
+  list.innerHTML=modalIngredients.map((ing,i)=>`
+    <div class="ing-input-row">
+      <input type="text" placeholder="Ingredient" value="${ing.name}"
+        oninput="modalIngredients[${i}].name=this.value">
+      <button class="ing-have-toggle ${ing.have?'have':''}"
+        onclick="modalIngredients[${i}].have=!modalIngredients[${i}].have;renderIngInputs()">
+        ${ing.have?'✅ Have':'🛒 Buy'}
+      </button>
+      <button class="ing-del" onclick="modalIngredients.splice(${i},1);renderIngInputs()">×</button>
+    </div>`).join('');
+}
+function saveMeal() {
+  const name=document.getElementById('mealNameInput').value.trim();
+  if(!name){alert('Please enter a meal name.');return;}
+  if(!meals[mealModalDate]) meals[mealModalDate]={};
+  meals[mealModalDate][mealModalType]={
+    name,
+    ingredients:modalIngredients.filter(i=>i.name.trim()).map(i=>({name:i.name.trim(),have:i.have}))
+  };
+  save();
+  closeMealModal();
+  renderMeals();
+}
+function deleteMeal(key, type) {
+  if(!confirm('Remove this meal?')) return;
+  if(meals[key]){
+    delete meals[key][type];
+    if(Object.keys(meals[key]).length===0) delete meals[key];
+  }
+  save();
+  renderMeals();
+}
+function toggleIngredient(key, mealType, ingIndex) {
+  if(meals[key]&&meals[key][mealType]&&meals[key][mealType].ingredients[ingIndex]){
+    meals[key][mealType].ingredients[ingIndex].have=!meals[key][mealType].ingredients[ingIndex].have;
+    save();
+    renderMeals();
+  }
+}
+window.switchMealsTab    = switchMealsTab;
+window.changeCalMonth    = changeCalMonth;
+window.toggleDayCard     = toggleDayCard;
+window.openMealModal     = openMealModal;
+window.closeMealModal    = closeMealModal;
+window.selectMealType    = selectMealType;
+window.addIngredientInput= addIngredientInput;
+window.renderIngInputs   = renderIngInputs;
+window.saveMeal          = saveMeal;
+window.deleteMeal        = deleteMeal;
+window.toggleIngredient  = toggleIngredient;
 window.switchView     = switchView;
 window.openPaydayModal= openPaydayModal;
 window.savePayday     = savePayday;
