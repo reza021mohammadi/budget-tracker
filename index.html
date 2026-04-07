@@ -293,6 +293,7 @@ canvas{width:100%!important;display:block;}
 <div class="family-overlay hidden" id="familyOverlay">
   <div class="signin-logo">🏠</div>
   <div class="family-title">Set Up Your Household</div>
+  <div id="familyWhoAmI" style="font-size:12px;color:var(--green);font-weight:600;"></div>
   <div class="family-sub">Create a household to share your budget, or join your partner's existing one.</div>
 
   <!-- Create -->
@@ -541,19 +542,7 @@ canvas{width:100%!important;display:block;}
 </div>
 
 <script type="module">
-// ═══════════════════════════════════════════════════════════════════
-// 🔥 FIREBASE CONFIG — paste your values here from Firebase Console
-//    Console → Project Settings → Your apps → SDK setup and config
-// ═══════════════════════════════════════════════════════════════════
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyDNJdUV63copftWu0MdwUgFFGJSRV-sjuY",
-  authDomain:        "budget-tracker-4c83c.firebaseapp.com",
-  projectId:         "budget-tracker-4c83c",
-  storageBucket:     "budget-tracker-4c83c.firebasestorage.app",
-  messagingSenderId: "130617560083",
-  appId:             "1:130617560083:web:369e10ed924b2671c043e6",
-};
-// ═══════════════════════════════════════════════════════════════════
+import { FIREBASE_CONFIG } from './config.js';
 
 import { initializeApp }            from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
@@ -568,7 +557,16 @@ function setSyncBadge(state, label) {
   b.textContent = label;
 }
 
-function showSignIn()   { document.getElementById('signinOverlay').classList.remove('hidden'); }
+function showSignIn() {
+  const overlay = document.getElementById('signinOverlay');
+  overlay.classList.remove('hidden');
+  // If returning from a redirect, show a loading message automatically
+  if (window.location.href.includes('__/auth/') || window.location.hash.includes('access_token') || sessionStorage.getItem('pendingRedirect')) {
+    document.getElementById('signinSpinner').style.display = 'block';
+    document.getElementById('signinSpinner').textContent = '⏳ Completing sign-in…';
+    document.getElementById('googleSignInBtn').style.display = 'none';
+  }
+}
 function hideSignIn()   { document.getElementById('signinOverlay').classList.add('hidden'); }
 function showFamilySetup() { document.getElementById('familyOverlay').classList.remove('hidden'); }
 function hideFamilySetup() { document.getElementById('familyOverlay').classList.add('hidden'); }
@@ -585,7 +583,7 @@ function genCode() {
 
 // After sign-in, check if this user already belongs to a household
 async function checkHousehold(uid) {
-  setSyncBadge('syncing', '⏳ Syncing…');
+  setSyncBadge('syncing', '⏳ Checking household…');
   try {
     const profileSnap = await getDoc(doc(_db, 'users', uid, 'profile', 'main'));
     if (profileSnap.exists() && profileSnap.data().familyCode) {
@@ -593,13 +591,16 @@ async function checkHousehold(uid) {
       updateFamilyBadge();
       startRealtimeSync();
     } else {
-      // No household yet — show setup screen
+      // No household yet — always show setup screen
       setSyncBadge('', '');
       showFamilySetup();
     }
   } catch(e) {
     console.error('Profile load failed:', e);
+    // Even on error — show the family setup screen so the user isn't stuck
     setSyncBadge('offline', '🔴 Offline');
+    showFamilySetup();
+    setFamilyStatus('⚠️ Could not load profile (' + (e.code || e.message) + '). You can still create or join a household.', true);
   }
 }
 
@@ -691,24 +692,29 @@ try {
   _auth = getAuth(app);
   const provider = new GoogleAuthProvider();
 
-  // Handle the result when Google redirects back to this page after sign-in
-  getRedirectResult(_auth)
-    .then(result => {
-      // onAuthStateChanged handles the user — nothing extra needed here
-    })
-    .catch(e => {
-      // Show the real error code so it's easy to diagnose
-      const msg = e.code || e.message || 'unknown error';
-      document.getElementById('signinSpinner').style.display = 'block';
-      document.getElementById('signinSpinner').textContent = '❌ Error: ' + msg;
-      document.getElementById('googleSignInBtn').style.display = 'flex';
-      console.error('Redirect sign-in error:', e);
-    });
+  // On page load, check if we're returning from a redirect sign-in
+  // (shows "Completing sign-in…" instead of black page on iPhone)
+  try {
+    const result = await getRedirectResult(_auth);
+    // If we got a result, onAuthStateChanged will handle it — nothing to do here
+  } catch(redirectErr) {
+    const code = redirectErr.code || redirectErr.message || String(redirectErr);
+    document.getElementById('signinSpinner').style.display = 'block';
+    document.getElementById('signinSpinner').textContent = '❌ ' + code;
+    document.getElementById('googleSignInBtn').style.display = 'flex';
+    console.error('Redirect result error:', redirectErr);
+  }
 
   onAuthStateChanged(_auth, (user) => {
     if (user) {
       _uid = user.uid;
       hideSignIn();
+      // Show who is signed in
+      const name = user.displayName || user.email || 'You';
+      setSyncBadge('syncing', '👋 ' + name.split(' ')[0]);
+      // Update family setup greeting if it's showing
+      const greetEl = document.getElementById('familyWhoAmI');
+      if (greetEl) greetEl.textContent = 'Signed in as ' + (user.displayName || user.email);
       checkHousehold(_uid);
     } else {
       showSignIn();
@@ -716,28 +722,43 @@ try {
     }
   });
 
-  // Always use redirect — most reliable across Safari Mac, Safari iOS, Chrome
+  // Sign-in button — use popup (works when triggered directly by tap/click)
+  // Safari on iOS allows popups triggered by real user gestures
   document.getElementById('googleSignInBtn').addEventListener('click', async () => {
-    document.getElementById('signinSpinner').style.display = 'block';
-    document.getElementById('signinSpinner').textContent = '⏳ Redirecting to Google…';
-    document.getElementById('googleSignInBtn').style.display = 'none';
+    const btn  = document.getElementById('googleSignInBtn');
+    const spin = document.getElementById('signinSpinner');
+    btn.style.display  = 'none';
+    spin.style.display = 'block';
+    spin.textContent   = '⏳ Opening Google sign-in…';
     try {
-      await signInWithRedirect(_auth, provider);
-      // Page will navigate away — code below won't run until user returns
+      await signInWithPopup(_auth, provider);
+      // onAuthStateChanged handles the rest
     } catch(e) {
-      const msg = e.code || e.message || 'unknown';
-      document.getElementById('signinSpinner').textContent = '❌ Error: ' + msg;
-      document.getElementById('googleSignInBtn').style.display = 'flex';
-      console.error('Sign-in error:', e);
+      if (e.code === 'auth/popup-blocked') {
+        // Safari blocked the popup — fall back to redirect
+        spin.textContent = '⏳ Redirecting to Google…';
+        try { await signInWithRedirect(_auth, provider); }
+        catch(e2) { spin.textContent = '❌ ' + (e2.code || e2.message); btn.style.display = 'flex'; }
+      } else if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
+        // User closed — just reset the button
+        spin.style.display = 'none';
+        btn.style.display  = 'flex';
+      } else {
+        // Show the real error code so it's easy to diagnose
+        spin.textContent   = '❌ ' + (e.code || e.message || 'unknown error');
+        btn.style.display  = 'flex';
+        console.error('Sign-in error:', e);
+      }
     }
   });
 
-  // Expose sign-out
   window.signOut = () => signOut(_auth);
 
 } catch(e) {
-  setSyncBadge('error', '❌ Config error');
-  console.error('Firebase init failed — did you paste your config?', e);
+  setSyncBadge('error', '❌ Config error — check your Firebase config values');
+  document.getElementById('signinSpinner').style.display = 'block';
+  document.getElementById('signinSpinner').textContent = '❌ Config error: ' + (e.message || e);
+  console.error('Firebase init failed:', e);
 }
 
 async function saveToCloud() {
@@ -1236,13 +1257,12 @@ document.getElementById('joinHouseholdBtn').addEventListener('click', async () =
   }
 });
 
-// INIT
+// INIT — render from localStorage FIRST so page is never blank
 document.getElementById('incomeInput').value=netIncome;
 document.getElementById('groceryInput').value=grocery;
 document.getElementById('savingsInput').value=savingsGoal;
 document.getElementById('bufferInput').value=bufferAmt||'';
-render();  // Render immediately from localStorage
-// Firebase will trigger a re-render after cloud load (via onAuthStateChanged → loadFromCloud)
+render();
 window.addEventListener('resize',()=>{if(activeView==='forecast')renderForecast();});
 </script>
 </body>
