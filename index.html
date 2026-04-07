@@ -314,7 +314,11 @@ canvas{width:100%!important;display:block;}
 .shop-card-header{padding:12px 14px 10px;}
 .shop-card-title{font-size:10px;color:var(--orange);text-transform:uppercase;letter-spacing:.9px;font-weight:600;}
 .shop-card-count{font-family:'DM Serif Display',serif;font-size:22px;color:var(--orange);margin-top:3px;}
-.shop-item{display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--border);font-size:13px;}
+.shop-item{display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--border);font-size:13px;cursor:pointer;}
+.shop-item.purchased .shop-ing-name{color:var(--muted);text-decoration:line-through;}
+.shop-item.purchased .shop-day-tag{opacity:.4;}
+.shop-check{width:22px;height:22px;border-radius:5px;border:1.5px solid rgba(245,165,35,.4);background:rgba(245,165,35,.1);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .2s;}
+.shop-check.done{background:rgba(62,207,142,.2);border-color:rgba(62,207,142,.5);color:var(--green);}
 .shop-day-tag{font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(245,165,35,.12);color:var(--orange);border:1px solid rgba(245,165,35,.25);flex-shrink:0;width:38px;text-align:center;}
 .shop-ing-name{flex:1;color:var(--text);}
 .day-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:0 16px 8px;overflow:hidden;}
@@ -337,9 +341,9 @@ canvas{width:100%!important;display:block;}
 .ing-section-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:6px;}
 .ing-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid rgba(46,46,62,.5);}
 .ing-row:first-child{border-top:none;}
-.ing-check-btn{width:18px;height:18px;border-radius:4px;border:1px solid var(--border);background:none;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;padding:0;}
-.ing-check-btn.have{background:rgba(62,207,142,.15);border-color:rgba(62,207,142,.4);color:var(--green);}
-.ing-check-btn.miss{background:rgba(245,165,35,.1);border-color:rgba(245,165,35,.3);}
+.ing-check-btn{width:22px;height:22px;border-radius:5px;border:1.5px solid rgba(245,165,35,.5);background:rgba(245,165,35,.1);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;transition:all .2s;}
+.ing-check-btn.have{background:rgba(62,207,142,.2);border-color:rgba(62,207,142,.5);color:var(--green);}
+.ing-check-btn.miss{background:rgba(245,165,35,.12);border-color:rgba(245,165,35,.4);}
 .ing-name-text{flex:1;font-size:12px;color:var(--text);}
 .ing-buy-tag{font-size:9px;color:var(--orange);}
 .delete-meal-btn{background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;padding:2px 4px;flex-shrink:0;}
@@ -1527,18 +1531,34 @@ function fmtShortLabel(key) {
 }
 
 function getMissingIngredients(dateKeys) {
-  const missing=[];
+  const result=[];
   dateKeys.forEach(key=>{
     const day=meals[key]||{};
     ['breakfast','lunch','dinner'].forEach(type=>{
       const meal=day[type];
       if(!meal) return;
-      (meal.ingredients||[]).forEach(ing=>{
-        if(!ing.have) missing.push({key,type,name:ing.name,dayLabel:fmtShortLabel(key)});
+      (meal.ingredients||[]).forEach((ing,idx)=>{
+        if(!ing.have) result.push({key,type,name:ing.name,dayLabel:fmtShortLabel(key),ingIndex:idx,have:false});
       });
     });
   });
-  return missing;
+  return result;
+}
+
+// All ingredients (both have and missing) for the shopping list with checkboxes
+function getAllIngredients(dateKeys) {
+  const result=[];
+  dateKeys.forEach(key=>{
+    const day=meals[key]||{};
+    ['breakfast','lunch','dinner'].forEach(type=>{
+      const meal=day[type];
+      if(!meal) return;
+      (meal.ingredients||[]).forEach((ing,idx)=>{
+        result.push({key,type,name:ing.name,dayLabel:fmtShortLabel(key),ingIndex:idx,have:ing.have});
+      });
+    });
+  });
+  return result;
 }
 
 function switchMealsTab(tab, el) {
@@ -1674,15 +1694,16 @@ function onMealSelectChange(sel) {
 
 function renderMealsOverview() {
   const keys=[todayKey(), offsetDateKey(1), offsetDateKey(2)];
-  const missing=getMissingIngredients(keys);
-  // Shopping list
-  document.getElementById('shopCount').textContent=missing.length+' item'+(missing.length!==1?'s':'');
+  const allIngs=getAllIngredients(keys);
+  const remaining=allIngs.filter(x=>!x.have);
+  document.getElementById('shopCount').textContent=remaining.length+' to buy · '+allIngs.filter(x=>x.have).length+' ready';
   const shopList=document.getElementById('shopList');
-  if(missing.length===0){
-    shopList.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--muted)">All ingredients ready ✅</div>';
+  if(allIngs.length===0){
+    shopList.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--muted)">No meals planned — add meals in Calendar</div>';
   } else {
-    shopList.innerHTML=missing.map(x=>`
-      <div class="shop-item">
+    shopList.innerHTML=allIngs.map(x=>`
+      <div class="shop-item ${x.have?'purchased':''}" onclick="toggleIngredient('${x.key}','${x.type}',${x.ingIndex})">
+        <div class="shop-check ${x.have?'done':''}">${x.have?'✓':''}</div>
         <span class="shop-day-tag">${x.dayLabel}</span>
         <span class="shop-ing-name">${x.name}</span>
       </div>`).join('');
@@ -1729,9 +1750,25 @@ function buildDayCard(key, autoExpand) {
     ?`<span class="all-good-badge">✅ Ready</span>`
     :`<button class="plan-btn" onclick="event.stopPropagation();openMealModal('${key}')">+ Plan</button>`;
 
-  // Ingredient rows for all planned meals combined
-  const allIngs=[];
-  types.forEach(t=>{ if(dayObj[t]) (dayObj[t].ingredients||[]).forEach(ing=>allIngs.push({...ing,mealType:t})); });
+  // Ingredient rows — use proper per-meal-type indices
+  const ingSections=[];
+  types.forEach(t=>{
+    if(!dayObj[t]) return;
+    const ings=dayObj[t].ingredients||[];
+    if(!ings.length) return;
+    ingSections.push(ings.map((ing,idx)=>`
+      <div class="ing-row">
+        <button class="ing-check-btn ${ing.have?'have':'miss'}"
+          onclick="event.stopPropagation();toggleIngredient('${key}','${t}',${idx})">${ing.have?'✓':''}</button>
+        <span class="ing-name-text" style="${ing.have?'color:var(--muted);text-decoration:line-through;':''}">${ing.name}</span>
+        ${!ing.have?'<span class="ing-buy-tag">buy</span>':''}
+      </div>`).join(''));
+  });
+  const ingRowsHtml=ingSections.length===0?'':`
+    <div class="ing-section">
+      <div class="ing-section-title">Ingredients</div>
+      ${ingSections.join('')}
+    </div>`;
 
   const mealRowsHtml=types.map(t=>{
     if(!dayObj[t]) return `<div class="meal-type-row">
@@ -1749,16 +1786,7 @@ function buildDayCard(key, autoExpand) {
     </div>`;
   }).join('');
 
-  const ingRowsHtml=allIngs.length===0?'':`
-    <div class="ing-section">
-      <div class="ing-section-title">Ingredients</div>
-      ${allIngs.map((ing,i)=>`
-        <div class="ing-row">
-          <button class="ing-check-btn ${ing.have?'have':'miss'}" onclick="event.stopPropagation();toggleIngredient('${key}','${ing.mealType}',${(dayObj[ing.mealType].ingredients||[]).indexOf(ing)})">${ing.have?'✓':''}</button>
-          <span class="ing-name-text">${ing.name}</span>
-          ${!ing.have?'<span class="ing-buy-tag">buy</span>':''}
-        </div>`).join('')}
-    </div>`;
+
 
   card.innerHTML=`
     <div class="day-card-header" onclick="toggleDayCard(this)">
