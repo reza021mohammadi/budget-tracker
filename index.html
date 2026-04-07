@@ -1585,21 +1585,34 @@ function openLibraryModal() {
 function closeLibraryModal() {
   document.getElementById('libraryModalOverlay').classList.remove('open');
 }
-function addLibIngInput(name='',have=false) {
-  libIngredients.push({name,have});
+function captureLibIngInputs() {
+  document.querySelectorAll('#libIngList .ing-input-row').forEach((row,i)=>{
+    const inp=row.querySelector('input[type=text]');
+    if(inp && libIngredients[i]!==undefined) libIngredients[i].name=inp.value;
+  });
+}
+function addLibIngInput() {
+  captureLibIngInputs();
+  libIngredients.push({name:'',have:false});
   renderLibIngInputs();
+  const inputs=document.querySelectorAll('#libIngList input[type=text]');
+  if(inputs.length) inputs[inputs.length-1].focus();
 }
 function renderLibIngInputs() {
   document.getElementById('libIngList').innerHTML=libIngredients.map((ing,i)=>`
     <div class="ing-input-row">
-      <input type="text" placeholder="Ingredient" value="${ing.name}" oninput="libIngredients[${i}].name=this.value">
-      <button class="ing-have-toggle ${ing.have?'have':''}" onclick="libIngredients[${i}].have=!libIngredients[${i}].have;renderLibIngInputs()">
+      <input type="text" placeholder="Ingredient" value="${ing.name.replace(/"/g,'&quot;')}"
+        onblur="libIngredients[${i}].name=this.value">
+      <button type="button" class="ing-have-toggle ${ing.have?'have':''}"
+        onclick="captureLibIngInputs();libIngredients[${i}].have=!libIngredients[${i}].have;renderLibIngInputs()">
         ${ing.have?'✅ Have':'🛒 Buy'}
       </button>
-      <button class="ing-del" onclick="libIngredients.splice(${i},1);renderLibIngInputs()">×</button>
+      <button type="button" class="ing-del"
+        onclick="captureLibIngInputs();libIngredients.splice(${i},1);renderLibIngInputs()">×</button>
     </div>`).join('');
 }
 function saveLibraryMeal() {
+  captureLibIngInputs();
   const name=document.getElementById('libMealName').value.trim();
   if(!name){alert('Please enter a meal name.');return;}
   mealLibrary.push({name, ingredients:libIngredients.filter(i=>i.name.trim()).map(i=>({name:i.name.trim(),have:i.have}))});
@@ -1801,24 +1814,36 @@ function selectMealType(type, btn) {
   modalIngredients=existing?existing.ingredients.map(i=>({...i})):[];
   renderIngInputs();
 }
-function addIngredientInput(name='', have=false) {
-  modalIngredients.push({name,have});
+function captureIngInputs() {
+  document.querySelectorAll('#ingInputList .ing-input-row').forEach((row,i)=>{
+    const inp=row.querySelector('input[type=text]');
+    if(inp && modalIngredients[i]!==undefined) modalIngredients[i].name=inp.value;
+  });
+}
+function addIngredientInput() {
+  captureIngInputs();
+  modalIngredients.push({name:'',have:false});
   renderIngInputs();
+  // Focus the new input
+  const inputs=document.querySelectorAll('#ingInputList input[type=text]');
+  if(inputs.length) inputs[inputs.length-1].focus();
 }
 function renderIngInputs() {
   const list=document.getElementById('ingInputList');
   list.innerHTML=modalIngredients.map((ing,i)=>`
     <div class="ing-input-row">
-      <input type="text" placeholder="Ingredient" value="${ing.name}"
-        oninput="modalIngredients[${i}].name=this.value">
-      <button class="ing-have-toggle ${ing.have?'have':''}"
-        onclick="modalIngredients[${i}].have=!modalIngredients[${i}].have;renderIngInputs()">
+      <input type="text" placeholder="Ingredient" value="${ing.name.replace(/"/g,'&quot;')}"
+        onblur="modalIngredients[${i}].name=this.value">
+      <button type="button" class="ing-have-toggle ${ing.have?'have':''}"
+        onclick="captureIngInputs();modalIngredients[${i}].have=!modalIngredients[${i}].have;renderIngInputs()">
         ${ing.have?'✅ Have':'🛒 Buy'}
       </button>
-      <button class="ing-del" onclick="modalIngredients.splice(${i},1);renderIngInputs()">×</button>
+      <button type="button" class="ing-del"
+        onclick="captureIngInputs();modalIngredients.splice(${i},1);renderIngInputs()">×</button>
     </div>`).join('');
 }
 function saveMeal() {
+  captureIngInputs();
   const sel=document.getElementById('mealNameSelect');
   let name='';
   if(sel.value==='__new__'){
@@ -1866,6 +1891,8 @@ window.toggleIngredient  = toggleIngredient;
 window.onMealSelectChange= onMealSelectChange;
 window.openLibraryModal  = openLibraryModal;
 window.closeLibraryModal = closeLibraryModal;
+window.captureIngInputs  = captureIngInputs;
+window.captureLibIngInputs=captureLibIngInputs;
 window.addLibIngInput    = addLibIngInput;
 window.renderLibIngInputs= renderLibIngInputs;
 window.saveLibraryMeal   = saveLibraryMeal;
