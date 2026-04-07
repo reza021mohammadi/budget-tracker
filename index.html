@@ -825,11 +825,15 @@ canvas{width:100%!important;display:block;}
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Category</label>
-        <select class="form-select" id="fCategory">
+        <select class="form-select" id="fCategory" onchange="onCategoryChange(this)">
           <option value="o2">O2 Installments</option><option value="install">Installments</option>
           <option value="sub" selected>Subscriptions</option><option value="paypal">PayPal</option>
           <option value="home">Home</option><option value="custom">Other</option>
+          <option value="__new__">✏️ + New category…</option>
         </select>
+        <div id="newCategoryWrap" style="display:none;margin-top:8px;">
+          <input class="form-input" id="newCategoryInput" type="text" placeholder="e.g. Sport, Health, Kids…">
+        </div>
       </div>
       <div class="form-group"><label class="form-label">Tag</label>
         <select class="form-select" id="fTag">
@@ -1013,6 +1017,7 @@ function applyCloudData(d) {
   if (d.mealLibrary!=null){ mealLibrary = d.mealLibrary; localStorage.setItem('bgt_ml', JSON.stringify(d.mealLibrary)); }
   if (d.sinkingFunds!=null){ sinkingFunds = d.sinkingFunds; localStorage.setItem('bgt_sf', JSON.stringify(d.sinkingFunds)); }
   if (d.spending!=null)    { spending    = d.spending;    localStorage.setItem('bgt_sp', JSON.stringify(d.spending)); }
+  if (d.customCategories!=null){ customCategories=d.customCategories; localStorage.setItem('bgt_cc',JSON.stringify(d.customCategories)); }
   if (d.payday!=null)     { payday      = d.payday;      localStorage.setItem('bgt_pd', d.payday); }
   if (d.savingsGoal!=null){ savingsGoal = d.savingsGoal; localStorage.setItem('bgt_sg', d.savingsGoal); }
   if (d.bufferAmt!=null)  { bufferAmt   = d.bufferAmt;   localStorage.setItem('bgt_bf', d.bufferAmt); }
@@ -1127,7 +1132,7 @@ async function saveToCloud() {
   setSyncBadge('syncing', '⏳ Saving…');
   try {
     await setDoc(doc(_db, 'households', _familyCode, 'data', 'main'), {
-      payments, netIncome, grocery, recreation, meals, mealLibrary, sinkingFunds, spending, payday, savingsGoal, bufferAmt,
+      payments, netIncome, grocery, recreation, meals, mealLibrary, sinkingFunds, spending, customCategories, payday, savingsGoal, bufferAmt,
       updatedAt: new Date().toISOString(),
       updatedBy: _auth && _auth.currentUser ? (_auth.currentUser.displayName || _auth.currentUser.email || 'Unknown') : 'Unknown'
     });
@@ -1176,7 +1181,8 @@ let payday     = parseInt(localStorage.getItem('bgt_pd')  ||'25');
 let savingsGoal= parseFloat(localStorage.getItem('bgt_sg')||'500');
 let bufferAmt  = parseFloat(localStorage.getItem('bgt_bf')||'500');
 let sinkingFunds = JSON.parse(localStorage.getItem('bgt_sf')||'[]');
-let spending     = JSON.parse(localStorage.getItem('bgt_sp')||'{}'); // {YYYY-MM:{groceries,recreation,other}}
+let spending     = JSON.parse(localStorage.getItem('bgt_sp')||'{}');
+let customCategories = JSON.parse(localStorage.getItem('bgt_cc')||'[]'); // [{id, label, color}] // {YYYY-MM:{groceries,recreation,other}}
 let tempPayday = payday;
 let activeRange='all', activeTab='monthly', activeTag='all', activeView='overview', searchQuery='';
 let nextId = Math.max(...payments.map(p=>p.id),0)+1;
@@ -1193,6 +1199,7 @@ function save(){
   localStorage.setItem('bgt_ml',JSON.stringify(mealLibrary));
   localStorage.setItem('bgt_sf',JSON.stringify(sinkingFunds));
   localStorage.setItem('bgt_sp',JSON.stringify(spending));
+  localStorage.setItem('bgt_cc',JSON.stringify(customCategories));
   localStorage.setItem('bgt_pd',payday);
   localStorage.setItem('bgt_sg',savingsGoal);
   localStorage.setItem('bgt_bf',bufferAmt);
@@ -1249,8 +1256,20 @@ function nextOcc(day){ const n=today(),d=new Date(n.getFullYear(),n.getMonth(),d
 function daysUntil(dt){ const n=today(); return Math.ceil((dt-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/864e5); }
 function upcomingPayments(days=7){ return payments.filter(p=>!p.onetime).map(p=>{const nx=nextOcc(p.day),d=daysUntil(nx);return d>=0&&d<=days?{...p,daysUntil:d}:null;}).filter(Boolean).sort((a,b)=>a.daysUntil-b.daysUntil); }
 function getRange(d){ return d<=10?'1':d<=20?'2':d<=25?'3':'4'; }
-function catDot(c){ return {o2:'dot-o2',install:'dot-install',sub:'dot-sub',paypal:'dot-paypal',home:'dot-home',custom:'dot-custom'}[c]||'dot-custom'; }
-function catLabel(c){ return {o2:'O2',install:'Installments',sub:'Subscriptions',paypal:'PayPal',home:'Home',custom:'Other',grocery:'Groceries'}[c]||c; }
+function catDot(c){
+  const custom=customCategories.find(x=>x.id===c);
+  if(custom) return ''; // handled via inline style
+  return {o2:'dot-o2',install:'dot-install',sub:'dot-sub',paypal:'dot-paypal',home:'dot-home',custom:'dot-custom'}[c]||'dot-custom';
+}
+function catColor(c){
+  const custom=customCategories.find(x=>x.id===c);
+  return custom?custom.color:'';
+}
+function catLabel(c){
+  const custom=customCategories.find(x=>x.id===c);
+  if(custom) return custom.label;
+  return {o2:'O2',install:'Installments',sub:'Subscriptions',paypal:'PayPal',home:'Home',custom:'Other',grocery:'Groceries'}[c]||c;
+}
 function fmt(n){ return '€'+Math.abs(n).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
 // ════════ VIEW SWITCHER ════════
@@ -1399,7 +1418,7 @@ function renderList(monthly, up){
         ? `<button class="tag-toggle tag-optional" onclick="cycleTag(${p.id})" title="Tap to change">✨ Optional</button>`
         : `<button class="tag-toggle tag-none" onclick="cycleTag(${p.id})" title="Tap to tag">+ Tag</button>`;
       div.innerHTML=`<div class="swipe-delete-bg">Delete</div>
-        <div class="pd ${catDot(cat)}"></div>
+        <div class="pd ${catDot(cat)}" style="${catColor(cat)?'background:'+catColor(cat)+';':''}"></div>
         <div class="pi">
           <div class="pi-name">${p.name}${p.onetime?'<span class="badge b-onetime">1×</span>':''}${upIds.has(p.id)?'<span class="badge b-due">Due</span>':''}</div>
           <div class="pi-meta">${p.onetime?(p.onetimeDate||''):'Ends: '+p.endDate}</div>
@@ -1610,20 +1629,75 @@ function deletePayment(id){if(!confirm('Remove?'))return;payments=payments.filte
 function filterRange(r,el){activeRange=r;document.querySelectorAll('.range-pill').forEach(p=>p.classList.remove('active'));el.classList.add('active');render();}
 function switchTab(t,el){activeTab=t;document.querySelectorAll('.list-tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');render();}
 function filterTag(t,el){activeTag=t;document.querySelectorAll('.tag-chip').forEach(x=>x.classList.remove('active'));el.classList.add('active');render();}
-function openModal(){document.getElementById('modalOverlay').classList.add('open');document.getElementById('fName').focus();}
-function closeModal(){document.getElementById('modalOverlay').classList.remove('open');['fName','fAmount','fDay','fEndDate','fNote'].forEach(id=>document.getElementById(id).value='');document.getElementById('fOnetime').checked=false;document.getElementById('fTag').value='';}
+function openModal(){
+  populateCategorySelect();
+  document.getElementById('newCategoryWrap').style.display='none';
+  document.getElementById('modalOverlay').classList.add('open');
+  document.getElementById('fName').focus();
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  ['fName','fAmount','fDay','fEndDate','fNote','newCategoryInput'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fOnetime').checked=false;
+  document.getElementById('fTag').value='';
+  document.getElementById('newCategoryWrap').style.display='none';
+  document.getElementById('fCategory').value='sub';
+}
 function closeOnBg(e,id){if(e.target===e.currentTarget)document.getElementById(id).classList.remove('open');}
+// Palette of colours to auto-assign to new categories
+const CAT_COLORS = ['#e879f9','#fb923c','#34d399','#60a5fa','#f472b6','#a78bfa','#2dd4bf','#facc15'];
+
+function onCategoryChange(sel) {
+  const wrap = document.getElementById('newCategoryWrap');
+  if(sel.value==='__new__'){
+    wrap.style.display='block';
+    document.getElementById('newCategoryInput').focus();
+  } else {
+    wrap.style.display='none';
+  }
+}
+
+function populateCategorySelect() {
+  const sel = document.getElementById('fCategory');
+  // Keep built-in options, remove old custom ones first
+  Array.from(sel.options).filter(o=>o.dataset.custom).forEach(o=>o.remove());
+  // Insert custom categories before the "Other" option
+  const otherIdx = Array.from(sel.options).findIndex(o=>o.value==='custom');
+  customCategories.forEach(c=>{
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.label;
+    opt.dataset.custom = '1';
+    sel.insertBefore(opt, sel.options[otherIdx]);
+  });
+}
+
 function addPayment(){
   const name=document.getElementById('fName').value.trim();
   const amount=parseFloat(document.getElementById('fAmount').value);
   const day=parseInt(document.getElementById('fDay').value);
-  const cat=document.getElementById('fCategory').value;
+  let cat=document.getElementById('fCategory').value;
   const tag=document.getElementById('fTag').value;
   const endDate=document.getElementById('fEndDate').value;
   const note=document.getElementById('fNote').value.trim();
   const onetime=document.getElementById('fOnetime').checked;
   if(!name||isNaN(amount)||amount<=0){alert('Please enter a name and amount.');return;}
   if(!onetime&&(isNaN(day)||day<1||day>31)){alert('Please enter a valid day (1–31).');return;}
+  // Handle new custom category
+  if(cat==='__new__'){
+    const newLabel=document.getElementById('newCategoryInput').value.trim();
+    if(!newLabel){alert('Please enter a category name.');return;}
+    // Check if already exists
+    const existing=customCategories.find(c=>c.label.toLowerCase()===newLabel.toLowerCase());
+    if(existing){
+      cat=existing.id;
+    } else {
+      const newId='cat_'+Date.now();
+      const color=CAT_COLORS[customCategories.length % CAT_COLORS.length];
+      customCategories.push({id:newId,label:newLabel,color});
+      cat=newId;
+    }
+  }
   payments.push({id:nextId++,name,amount,day:onetime?1:day,cat,tag,note,onetime,
     endDate:endDate?new Date(endDate).toLocaleDateString('en-GB'):'ongoing',
     onetimeDate:endDate?new Date(endDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''});
@@ -2399,6 +2473,8 @@ window.toggleIngredient  = toggleIngredient;
 window.onMealSelectChange= onMealSelectChange;
 window.openLibraryModal  = openLibraryModal;
 window.closeLibraryModal = closeLibraryModal;
+window.onCategoryChange  = onCategoryChange;
+window.populateCategorySelect = populateCategorySelect;
 window.captureIngInputs  = captureIngInputs;
 window.captureLibIngInputs=captureLibIngInputs;
 window.spliceModalIng    = spliceModalIng;
