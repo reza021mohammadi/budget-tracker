@@ -142,6 +142,11 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .b-optional{background:rgba(181,123,238,.15);color:var(--purple);border:1px solid rgba(181,123,238,.3);}
 .delete-btn{background:none;border:none;color:var(--muted);font-size:17px;cursor:pointer;padding:3px 6px;border-radius:7px;transition:all .15s;flex-shrink:0;}
 .delete-btn:active{background:rgba(255,78,78,.15);color:var(--danger);}
+.tag-toggle{flex-shrink:0;width:30px;height:30px;border-radius:50%;border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.tag-toggle:active{transform:scale(.85);}
+.tag-none{background:var(--surface2);color:var(--muted);font-size:16px;font-weight:700;}
+.tag-essential{background:rgba(62,207,142,.12);border:1px solid rgba(62,207,142,.3);}
+.tag-optional{background:rgba(181,123,238,.12);border:1px solid rgba(181,123,238,.3);}
 
 /* FORECAST */
 .forecast-section{padding:14px 16px 0;}
@@ -782,27 +787,27 @@ async function saveToCloud() {
 // ════════ DATA ════════
 const DEF = [
   {id:1, name:"iPhone 16",               amount:64.50,  day:28,cat:"o2",     endDate:"28.10.2026",onetime:false,tag:"",note:""},
-  {id:2, name:"Internet",                amount:66.00,  day:30,cat:"o2",     endDate:"ongoing",   onetime:false,tag:"essential",note:"After 10th each month"},
-  {id:3, name:"Nintendo",                amount:16.00,  day:23,cat:"o2",     endDate:"23.12.2026",onetime:false,tag:"optional",note:""},
+  {id:2, name:"Internet",                amount:66.00,  day:30,cat:"o2",     endDate:"ongoing",   onetime:false,tag:"",note:"After 10th each month"},
+  {id:3, name:"Nintendo",                amount:16.00,  day:23,cat:"o2",     endDate:"23.12.2026",onetime:false,tag:"",note:""},
   {id:4, name:"iPhone 17 + AirPods Pro", amount:88.00,  day:23,cat:"o2",     endDate:"23.11.2027",onetime:false,tag:"",note:""},
   {id:5, name:"Otto AirPods MAX",        amount:26.42,  day:18,cat:"install",endDate:"18.08.2026",onetime:false,tag:"",note:""},
   {id:6, name:"Philips Lumea",           amount:45.00,  day:20,cat:"install",endDate:"20.01.2027",onetime:false,tag:"",note:""},
   {id:7, name:"Steam Iron",              amount:16.00,  day:19,cat:"install",endDate:"19.05.2026",onetime:false,tag:"",note:""},
   {id:8, name:"Infrared Heater",         amount:23.33,  day:24,cat:"install",endDate:"24.04.2026",onetime:false,tag:"",note:""},
-  {id:9, name:"YouTube",                 amount:12.99,  day:19,cat:"sub",    endDate:"ongoing",   onetime:false,tag:"optional",note:""},
-  {id:10,name:"The Local",               amount:5.99,   day:25,cat:"sub",    endDate:"ongoing",   onetime:false,tag:"optional",note:""},
-  {id:11,name:"iCloud",                  amount:9.99,   day:9, cat:"sub",    endDate:"ongoing",   onetime:false,tag:"essential",note:""},
-  {id:12,name:"Tickets BVG",             amount:126.00, day:1, cat:"sub",    endDate:"ongoing",   onetime:false,tag:"essential",note:""},
-  {id:13,name:"Zahnzusatz-Vers.",        amount:23.57,  day:1, cat:"sub",    endDate:"01.11.2027",onetime:false,tag:"essential",note:""},
+  {id:9, name:"YouTube",                 amount:12.99,  day:19,cat:"sub",    endDate:"ongoing",   onetime:false,tag:"",note:""},
+  {id:10,name:"The Local",               amount:5.99,   day:25,cat:"sub",    endDate:"ongoing",   onetime:false,tag:"",note:""},
+  {id:11,name:"iCloud",                  amount:9.99,   day:9, cat:"sub",    endDate:"ongoing",   onetime:false,tag:"",note:""},
+  {id:12,name:"Tickets BVG",             amount:126.00, day:1, cat:"sub",    endDate:"ongoing",   onetime:false,tag:"",note:""},
+  {id:13,name:"Zahnzusatz-Vers.",        amount:23.57,  day:1, cat:"sub",    endDate:"01.11.2027",onetime:false,tag:"",note:""},
   {id:14,name:"Bikes",                   amount:53.71,  day:5, cat:"paypal", endDate:"05.11.2026",onetime:false,tag:"",note:""},
   {id:15,name:"SMEG",                    amount:28.06,  day:29,cat:"paypal", endDate:"29.06.2026",onetime:false,tag:"",note:""},
-  {id:16,name:"Douglas",                 amount:71.06,  day:21,cat:"paypal", endDate:"21.06.2026",onetime:false,tag:"optional",note:""},
+  {id:16,name:"Douglas",                 amount:71.06,  day:21,cat:"paypal", endDate:"21.06.2026",onetime:false,tag:"",note:""},
   {id:17,name:"Swarovski",               amount:43.60,  day:3, cat:"paypal", endDate:"03.09.2026",onetime:false,tag:"",note:""},
   {id:18,name:"Adidas",                  amount:77.65,  day:16,cat:"paypal", endDate:"16.06.2026",onetime:true, tag:"",note:"",onetimeDate:"Jun 16, 2026"},
   {id:19,name:"Swarovski Anniv.",        amount:110.60, day:26,cat:"paypal", endDate:"26.04.2026",onetime:true, tag:"",note:"",onetimeDate:"Apr 26, 2026"},
   {id:20,name:"Reza German Class",       amount:230.00, day:1, cat:"sub",    endDate:"Apr 1 & May 28",onetime:true,tag:"",note:"",onetimeDate:"Apr 1 & May 28"},
-  {id:21,name:"Rent",                    amount:990.00, day:1, cat:"home",   endDate:"ongoing",   onetime:false,tag:"essential",note:""},
-  {id:22,name:"Electricity",             amount:100.00, day:14,cat:"home",   endDate:"ongoing",   onetime:false,tag:"essential",note:""},
+  {id:21,name:"Rent",                    amount:990.00, day:1, cat:"home",   endDate:"ongoing",   onetime:false,tag:"",note:""},
+  {id:22,name:"Electricity",             amount:100.00, day:14,cat:"home",   endDate:"ongoing",   onetime:false,tag:"",note:""},
 ];
 
 let payments   = JSON.parse(localStorage.getItem('bgt_p')||'null') || JSON.parse(JSON.stringify(DEF));
@@ -825,6 +830,16 @@ function save(){
   localStorage.setItem('bgt_bf',bufferAmt);
   // Then sync to cloud in background
   saveToCloud();
+}
+
+// Cycle tag: none → essential → optional → none
+function cycleTag(id) {
+  const p = payments.find(p => p.id === id);
+  if (!p) return;
+  const next = { '': 'essential', 'essential': 'optional', 'optional': '' };
+  p.tag = next[p.tag] || '';
+  save();
+  render();
 }
 
 // ════════ HELPERS ════════
@@ -966,13 +981,19 @@ function renderList(monthly, up){
       const div=document.createElement('div');
       div.className='payment-item'+(upIds.has(p.id)?' due-soon':'')+(p.tag==='optional'?' is-optional':'');
       div.style.animationDelay=(i*25)+'ms';
+      const tagBtn = p.tag==='essential'
+        ? `<button class="tag-toggle tag-essential" onclick="cycleTag(${p.id})" title="Click to change tag">✅</button>`
+        : p.tag==='optional'
+        ? `<button class="tag-toggle tag-optional" onclick="cycleTag(${p.id})" title="Click to change tag">✨</button>`
+        : `<button class="tag-toggle tag-none" onclick="cycleTag(${p.id})" title="Tap to tag as Essential or Optional">·</button>`;
       div.innerHTML=`<div class="pd ${catDot(cat)}"></div>
         <div class="pi">
-          <div class="pi-name">${p.name}${p.onetime?'<span class="badge b-onetime">1×</span>':''}${upIds.has(p.id)?'<span class="badge b-due">Due</span>':''}${p.tag==='essential'?'<span class="badge b-essential">✅</span>':p.tag==='optional'?'<span class="badge b-optional">✨</span>':''}</div>
-          <div class="pi-meta">${p.onetime?(p.onetimeDate||''):'Ends: '+p.endDate}${p.tag?' · '+p.tag:''}</div>
+          <div class="pi-name">${p.name}${p.onetime?'<span class="badge b-onetime">1×</span>':''}${upIds.has(p.id)?'<span class="badge b-due">Due</span>':''}</div>
+          <div class="pi-meta">${p.onetime?(p.onetimeDate||''):'Ends: '+p.endDate}</div>
           ${p.note?`<div class="pi-note">💬 ${p.note}</div>`:''}
         </div>
         <div class="pr"><div class="pr-amount">${fmt(p.amount)}</div><div class="pr-day">${p.onetime?'':'Day '+p.day}</div></div>
+        ${tagBtn}
         <button class="delete-btn" onclick="deletePayment(${p.id})">×</button>`;
       sec.appendChild(div);
     });
@@ -1212,6 +1233,7 @@ window.closeModal     = closeModal;
 window.closeOnBg      = closeOnBg;
 window.addPayment     = addPayment;
 window.deletePayment  = deletePayment;
+window.cycleTag       = cycleTag;
 window.copyExport     = copyExport;
 window.toggleBD       = toggleBD;
 
