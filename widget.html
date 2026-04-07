@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Budget Widget</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0f0f13;color:#f0f0f5;font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.widget{width:100%;max-width:340px;}
+.label{font-size:10px;color:#7a7a90;text-transform:uppercase;letter-spacing:1px;font-weight:600;}
+.value{font-family:'DM Serif Display',serif;font-size:42px;color:#c8f044;margin:4px 0 2px;line-height:1;}
+.sub{font-size:12px;color:#7a7a90;}
+.divider{height:1px;background:#2e2e3e;margin:18px 0;}
+.next-label{font-size:11px;color:#7a7a90;margin-bottom:6px;}
+.payment-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid #2e2e3e;font-size:13px;}
+.payment-row:first-child{border-top:none;}
+.pay-dot{width:6px;height:6px;border-radius:50%;background:#c8f044;flex-shrink:0;margin-right:6px;}
+.pay-name{flex:1;color:#f0f0f5;}
+.pay-day{font-size:10px;color:#7a7a90;margin-right:8px;}
+.pay-amount{font-weight:600;color:#f0f0f5;}
+.open-btn{display:block;margin-top:20px;text-align:center;background:#c8f044;color:#0f0f13;border-radius:12px;padding:12px;font-weight:700;font-size:14px;text-decoration:none;font-family:'DM Sans',sans-serif;}
+.payday-badge{display:inline-block;font-size:10px;background:rgba(62,207,142,.15);color:#3ecf8e;border:1px solid rgba(62,207,142,.3);border-radius:99px;padding:2px 8px;margin-left:6px;}
+.loading{font-size:14px;color:#7a7a90;text-align:center;padding:40px 0;}
+</style>
+</head>
+<body>
+<div class="widget" id="widget">
+  <div class="loading">⏳ Loading…</div>
+</div>
+<script type="module">
+import { FIREBASE_CONFIG } from './config.js';
+import { initializeApp }   from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
+import { getFirestore, doc, getDoc }   from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-lite.js';
+
+const app  = initializeApp(FIREBASE_CONFIG);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+function fmt(n){ return '€'+Math.abs(n).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function daysUntil(day){
+  const n=new Date(), d=new Date(n.getFullYear(),n.getMonth(),day);
+  if(d<=n) d.setMonth(d.getMonth()+1);
+  return Math.ceil((d-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/864e5);
+}
+
+onAuthStateChanged(auth, async user=>{
+  if(!user){ document.getElementById('widget').innerHTML='<div class="loading">Please sign in to the main app first.</div><a class="open-btn" href="index.html">Open Budget App</a>'; return; }
+
+  // Load profile → household code
+  const profileSnap = await getDoc(doc(db,'users',user.uid,'profile','main'));
+  if(!profileSnap.exists()){ document.getElementById('widget').innerHTML='<div class="loading">No household found.</div><a class="open-btn" href="index.html">Open App</a>'; return; }
+  const code = profileSnap.data().familyCode;
+  const snap = await getDoc(doc(db,'households',code,'data','main'));
+  if(!snap.exists()){ document.getElementById('widget').innerHTML='<div class="loading">No data yet.</div><a class="open-btn" href="index.html">Open App</a>'; return; }
+
+  const d = snap.data();
+  const payments   = d.payments   || [];
+  const netIncome  = d.netIncome  || 0;
+  const grocery    = d.grocery    || 0;
+  const recreation = d.recreation || 0;
+  const payday     = d.payday     || 25;
+  const monthly    = payments.filter(p=>!p.onetime);
+  const fixed      = monthly.reduce((s,p)=>s+p.amount,0);
+  const total      = fixed+grocery+recreation;
+  const remaining  = netIncome-total;
+  const daysLeft   = daysUntil(payday);
+
+  // Next 3 payments
+  const upcoming = monthly
+    .map(p=>({...p,d:daysUntil(p.day)}))
+    .filter(p=>p.d>=0&&p.d<=14)
+    .sort((a,b)=>a.d-b.d)
+    .slice(0,3);
+
+  document.getElementById('widget').innerHTML=`
+    <div class="label">Remaining this month</div>
+    <div class="value">${remaining<0?'−':''}${fmt(remaining)}</div>
+    <div class="sub">of ${fmt(netIncome)} · ${((total/netIncome)*100).toFixed(0)}% used</div>
+    <div class="divider"></div>
+    <div class="next-label">Next payments</div>
+    ${upcoming.map(p=>`<div class="payment-row"><div class="pay-dot"></div><span class="pay-name">${p.name}</span><span class="pay-day">${p.d===0?'Today':p.d===1?'Tmrw':'Day '+p.day}</span><span class="pay-amount">${fmt(p.amount)}</span></div>`).join('')}
+    <div class="divider"></div>
+    <div class="label">Next payday <span class="payday-badge">${daysLeft===0?'Today 🎉':daysLeft+' days'}</span></div>
+    <a class="open-btn" href="index.html">Open Full Budget App</a>
+  `;
+});
+</script>
+</body>
+</html>
