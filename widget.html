@@ -66,10 +66,13 @@ onAuthStateChanged(auth, async user=>{
   const netIncome  = d.netIncome  || 0;
   const grocery    = d.grocery    || 0;
   const recreation = d.recreation || 0;
+  const clothes    = d.clothes    || 0;
+  const restaurant = d.restaurant || 0;
+  const other2     = d.other2     || 0;
   const payday     = d.payday     || 25;
   const monthly    = payments.filter(p=>!p.onetime);
   const fixed      = monthly.reduce((s,p)=>s+p.amount,0);
-  const total      = fixed+grocery+recreation;
+  const total      = fixed+grocery+recreation+clothes+restaurant+other2;
   const remaining  = netIncome-total;
   const daysLeft   = daysUntil(payday);
 
