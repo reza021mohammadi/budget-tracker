@@ -93,6 +93,7 @@ onAuthStateChanged(auth, async user=>{
     <div class="divider"></div>
     <div class="label">Next payday <span class="payday-badge">${daysLeft===0?'Today 🎉':daysLeft+' days'}</span></div>
     <a class="open-btn" href="index.html">Open Full Budget App</a>
+    <button onclick="window.location.reload(true)" style="display:block;width:100%;margin-top:10px;padding:12px;background:none;border:1px solid #2e2e3e;border-radius:12px;color:#7a7a90;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;">↻ Refresh</button>
   `;
 });
 </script>
