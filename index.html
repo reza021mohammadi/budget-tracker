@@ -180,9 +180,15 @@ canvas{width:100%!important;display:block;}
 .legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
 
 /* Donut chart */
-.donut-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;}
-.donut-canvas-wrap{position:relative;display:flex;justify-content:center;width:100%;}
-#donutChart{display:block;border-radius:50%;}
+.donut-wrap{display:flex;align-items:center;gap:16px;width:100%;}
+.donut-canvas-wrap{flex-shrink:0;width:160px;height:160px;}
+#donutChart{width:160px;height:160px;overflow:visible;display:block;}
+.donut-legend{flex:1;min-width:0;}
+.dl-item{display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);}
+.dl-item:last-child{border-bottom:none;}
+.dl-left{display:flex;align-items:center;gap:7px;min-width:0;}
+.dl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.dl-pct{font-size:10px;color:var(--muted);}
 .donut-legend{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:7px;}
 .dl-item{display:flex;align-items:center;justify-content:space-between;font-size:12px;background:var(--surface2);border-radius:8px;padding:6px 9px;}
 .dl-left{display:flex;align-items:center;gap:6px;}
@@ -639,7 +645,7 @@ canvas{width:100%!important;display:block;}
       <div class="chart-title">Current Month — Cost by Category</div>
       <div class="donut-wrap">
         <div class="donut-canvas-wrap">
-          <canvas id="donutChart"></canvas>
+        <svg id="donutChart" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
         <div class="donut-legend" id="donutLegend"></div>
       </div>
@@ -1524,48 +1530,78 @@ function drawTrendChart(data){
 }
 
 function drawDonut(d){
-  const canvas=document.getElementById('donutChart');
-  const ctx=canvas.getContext('2d');
-  const cats=[
-    {label:'O2',       color:'#7c6fef',val:payments.filter(p=>!p.onetime&&p.cat==='o2').reduce((s,p)=>s+p.amount,0)},
-    {label:'Installm.',color:'#f5a623',val:payments.filter(p=>!p.onetime&&p.cat==='install').reduce((s,p)=>s+p.amount,0)},
-    {label:'Subs',     color:'#5b93ef',val:payments.filter(p=>!p.onetime&&p.cat==='sub').reduce((s,p)=>s+p.amount,0)},
-    {label:'PayPal',   color:'#00b4d8',val:payments.filter(p=>!p.onetime&&p.cat==='paypal').reduce((s,p)=>s+p.amount,0)},
-    {label:'Home',     color:'#3ecf8e',val:payments.filter(p=>!p.onetime&&p.cat==='home').reduce((s,p)=>s+p.amount,0)},
-    {label:'Grocery',    color:'#eb9234',val:grocery},
-    {label:'Recreation', color:'#38bdf8',val:recreation},
-  ].filter(c=>c.val>0);
+  const svg=document.getElementById('donutChart');
+
+  // Build categories including custom ones
+  const builtIn=[
+    {label:'O2',        color:'#7c6fef', val:payments.filter(p=>!p.onetime&&p.cat==='o2').reduce((s,p)=>s+p.amount,0)},
+    {label:'Installm.', color:'#f5a623', val:payments.filter(p=>!p.onetime&&p.cat==='install').reduce((s,p)=>s+p.amount,0)},
+    {label:'Subs',      color:'#5b93ef', val:payments.filter(p=>!p.onetime&&p.cat==='sub').reduce((s,p)=>s+p.amount,0)},
+    {label:'PayPal',    color:'#00b4d8', val:payments.filter(p=>!p.onetime&&p.cat==='paypal').reduce((s,p)=>s+p.amount,0)},
+    {label:'Home',      color:'#3ecf8e', val:payments.filter(p=>!p.onetime&&p.cat==='home').reduce((s,p)=>s+p.amount,0)},
+    {label:'Grocery',   color:'#f5a623', val:grocery},
+    {label:'Recreation',color:'#38bdf8', val:recreation},
+  ];
+  const custom=customCategories.map(c=>({
+    label:c.label, color:c.color,
+    val:payments.filter(p=>!p.onetime&&p.cat===c.id).reduce((s,p)=>s+p.amount,0)
+  }));
+  const cats=[...builtIn,...custom].filter(c=>c.val>0);
   const total=cats.reduce((s,c)=>s+c.val,0);
+  if(!total){ svg.innerHTML=''; document.getElementById('donutLegend').innerHTML=''; return; }
 
-  // Compute size from container — ensures perfect square on all screens
-  const dpr=window.devicePixelRatio||1;
-  const container=canvas.parentElement;
-  const sz=Math.min(container.clientWidth, 220); // CSS pixels, max 220
-  // Set both the pixel buffer AND the CSS display size to be identical squares
-  canvas.width=Math.round(sz*dpr);
-  canvas.height=Math.round(sz*dpr);
-  canvas.style.width=sz+'px';
-  canvas.style.height=sz+'px';
+  // Arc path helper — draws a donut segment from startAngle to endAngle (radians)
+  function arcPath(cx, cy, outerR, innerR, startAngle, endAngle) {
+    const large = (endAngle - startAngle) > Math.PI ? 1 : 0;
+    const cos1=Math.cos(startAngle), sin1=Math.sin(startAngle);
+    const cos2=Math.cos(endAngle),   sin2=Math.sin(endAngle);
+    return [
+      `M ${(cx+outerR*cos1).toFixed(4)} ${(cy+outerR*sin1).toFixed(4)}`,
+      `A ${outerR} ${outerR} 0 ${large} 1 ${(cx+outerR*cos2).toFixed(4)} ${(cy+outerR*sin2).toFixed(4)}`,
+      `L ${(cx+innerR*cos2).toFixed(4)} ${(cy+innerR*sin2).toFixed(4)}`,
+      `A ${innerR} ${innerR} 0 ${large} 0 ${(cx+innerR*cos1).toFixed(4)} ${(cy+innerR*sin1).toFixed(4)}`,
+      'Z'
+    ].join(' ');
+  }
 
-  ctx.scale(dpr,dpr);
-  const cx=sz/2, cy=sz/2, r=sz/2-10, ri=r*.54;
-  let angle=-Math.PI/2;
-  cats.forEach(c=>{
-    const slice=(c.val/total)*Math.PI*2;
-    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,angle,angle+slice);ctx.closePath();
-    ctx.fillStyle=c.color;ctx.fill();
-    angle+=slice;
+  const cx=80, cy=80, outerR=72, innerR=46;
+  const gap=0.025; // radians gap between segments
+  const isLight=document.body.classList.contains('light-mode');
+  const textColor=isLight?'#1a1a1a':'#f0f0f5';
+  const bgColor=isLight?'#eeeee8':'#22222c';
+
+  let startAngle = -Math.PI/2; // start at top
+  const paths = cats.map(c=>{
+    const slice = (c.val/total) * 2 * Math.PI;
+    const s = startAngle + gap/2;
+    const e = startAngle + slice - gap/2;
+    startAngle += slice;
+    if(slice < gap) return ''; // skip tiny slices
+    return `<path d="${arcPath(cx,cy,outerR,innerR,s,e)}" fill="${c.color}" opacity="0.9"/>`;
   });
-  // Inner circle (hole)
-  ctx.beginPath();ctx.arc(cx,cy,ri,0,Math.PI*2);ctx.fillStyle='#18181f';ctx.fill();
-  // Centre label
-  ctx.fillStyle='#f0f0f5';
-  ctx.font=`bold ${Math.round(sz*0.075)}px DM Sans`;
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(fmt(total),cx,cy);
 
-  const leg=document.getElementById('donutLegend');
-  leg.innerHTML=cats.map(c=>`<div class="dl-item"><div class="dl-left"><div class="dl-dot" style="background:${c.color}"></div><span>${c.label}</span></div><div><b>${fmt(c.val)}</b> <span class="dl-pct">${((c.val/total)*100).toFixed(0)}%</span></div></div>`).join('');
+  svg.innerHTML=`
+    <circle cx="${cx}" cy="${cy}" r="${outerR}" fill="${bgColor}"/>
+    ${paths.join('')}
+    <circle cx="${cx}" cy="${cy}" r="${innerR}" fill="${bgColor}"/>
+    <text x="${cx}" y="${cy-7}" text-anchor="middle"
+      font-family="DM Serif Display,serif" font-size="14" fill="${textColor}">${fmt(total)}</text>
+    <text x="${cx}" y="${cy+10}" text-anchor="middle"
+      font-family="DM Sans,sans-serif" font-size="9" fill="${textColor}" opacity="0.5">total costs</text>
+  `;
+
+  // Legend
+  document.getElementById('donutLegend').innerHTML=cats.map(c=>`
+    <div class="dl-item">
+      <div class="dl-left">
+        <div class="dl-dot" style="background:${c.color}"></div>
+        <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.label}</span>
+      </div>
+      <div style="flex-shrink:0;margin-left:8px">
+        <b style="font-size:11px">${fmt(c.val)}</b>
+        <span class="dl-pct"> ${((c.val/total)*100).toFixed(0)}%</span>
+      </div>
+    </div>`).join('');
 }
 
 function renderMonthCards(data){
