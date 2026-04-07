@@ -142,11 +142,11 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .b-optional{background:rgba(181,123,238,.15);color:var(--purple);border:1px solid rgba(181,123,238,.3);}
 .delete-btn{background:none;border:none;color:var(--muted);font-size:17px;cursor:pointer;padding:3px 6px;border-radius:7px;transition:all .15s;flex-shrink:0;}
 .delete-btn:active{background:rgba(255,78,78,.15);color:var(--danger);}
-.tag-toggle{flex-shrink:0;width:30px;height:30px;border-radius:50%;border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
-.tag-toggle:active{transform:scale(.85);}
-.tag-none{background:var(--surface2);color:var(--muted);font-size:16px;font-weight:700;}
-.tag-essential{background:rgba(62,207,142,.12);border:1px solid rgba(62,207,142,.3);}
-.tag-optional{background:rgba(181,123,238,.12);border:1px solid rgba(181,123,238,.3);}
+.tag-toggle{flex-shrink:0;height:28px;padding:0 8px;border-radius:99px;border:none;cursor:pointer;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:all .15s;white-space:nowrap;}
+.tag-toggle:active{transform:scale(.88);}
+.tag-none{background:var(--surface2);color:var(--muted);border:1px dashed var(--border);}
+.tag-essential{background:rgba(62,207,142,.12);border:1px solid rgba(62,207,142,.3);color:var(--green);}
+.tag-optional{background:rgba(181,123,238,.12);border:1px solid rgba(181,123,238,.3);color:var(--purple);}
 
 /* FORECAST */
 .forecast-section{padding:14px 16px 0;}
@@ -968,6 +968,8 @@ function renderList(monthly, up){
   let filtered=(activeTab==='monthly'&&activeRange!=='all')?list.filter(p=>getRange(p.day)===activeRange):list;
   if(activeTab==='monthly'&&activeTag!=='all') filtered=filtered.filter(p=>p.tag===activeTag);
   if(!filtered.length){container.innerHTML='<div class="empty-state"><div style="font-size:36px;margin-bottom:8px">📭</div><div>No payments here</div></div>';return;}
+  // Hint banner
+  container.innerHTML='<div style="padding:10px 16px 0"><div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 13px;font-size:12px;color:var(--muted)">💡 Tap <b style="color:var(--text)">+ Tag</b> on any payment to mark it as Essential or Optional</div></div>';
   const upIds=new Set((up||[]).map(p=>p.id));
   const optionalTotal=filtered.filter(p=>p.tag==='optional').reduce((s,p)=>s+p.amount,0);
   if(activeTag==='all'&&optionalTotal>0&&activeTab==='monthly'){
@@ -982,10 +984,10 @@ function renderList(monthly, up){
       div.className='payment-item'+(upIds.has(p.id)?' due-soon':'')+(p.tag==='optional'?' is-optional':'');
       div.style.animationDelay=(i*25)+'ms';
       const tagBtn = p.tag==='essential'
-        ? `<button class="tag-toggle tag-essential" onclick="cycleTag(${p.id})" title="Click to change tag">✅</button>`
+        ? `<button class="tag-toggle tag-essential" onclick="cycleTag(${p.id})" title="Tap to change">✅ Essential</button>`
         : p.tag==='optional'
-        ? `<button class="tag-toggle tag-optional" onclick="cycleTag(${p.id})" title="Click to change tag">✨</button>`
-        : `<button class="tag-toggle tag-none" onclick="cycleTag(${p.id})" title="Tap to tag as Essential or Optional">·</button>`;
+        ? `<button class="tag-toggle tag-optional" onclick="cycleTag(${p.id})" title="Tap to change">✨ Optional</button>`
+        : `<button class="tag-toggle tag-none" onclick="cycleTag(${p.id})" title="Tap to tag">+ Tag</button>`;
       div.innerHTML=`<div class="pd ${catDot(cat)}"></div>
         <div class="pi">
           <div class="pi-name">${p.name}${p.onetime?'<span class="badge b-onetime">1×</span>':''}${upIds.has(p.id)?'<span class="badge b-due">Due</span>':''}</div>
