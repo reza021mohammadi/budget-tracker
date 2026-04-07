@@ -439,11 +439,11 @@ canvas{width:100%!important;display:block;}
       </div>
     </div>
     <!-- Pay-cycle -->
-    <div class="summary-card c-cycle full-width">
+    <div class="summary-card c-cycle full-width" onclick="toggleCycleCard()" style="cursor:pointer;">
       <div class="card-label">⚡ This Pay Cycle</div>
       <div class="card-value cv-cycle" id="cycleTotal">€0</div>
       <div class="card-sub" id="cycleRange"></div>
-      <div id="cycleCards"></div>
+      <div id="cycleCards" style="display:none;"></div>
     </div>
     <!-- Upcoming 7 days -->
     <div class="summary-card c-upcoming full-width">
@@ -906,6 +906,12 @@ function cycleTag(id) {
 }
 
 // Toggle collapsible pay cycle group
+function toggleCycleCard() {
+  const cards = document.getElementById('cycleCards');
+  const isOpen = cards.style.display !== 'none';
+  cards.style.display = isOpen ? 'none' : 'block';
+}
+
 function toggleCycleGroup(header) {
   const body    = header.closest('.cycle-card').querySelector('.cycle-body');
   const chevron = header.querySelector('.cycle-chevron');
@@ -1009,7 +1015,7 @@ function render(){
   }).sort((a,b)=>daysUntil(nextOcc(a.day))-daysUntil(nextOcc(b.day)));
   const cycleTotal=cycleItems.reduce((s,p)=>s+p.amount,0);
   document.getElementById('cycleTotal').textContent=fmt(cycleTotal);
-  document.getElementById('cycleRange').textContent=`Today → ${cycleEnd.toLocaleDateString('en-DE',{day:'numeric',month:'short'})} (payday)`;
+  document.getElementById('cycleRange').textContent=`Today → ${cycleEnd.toLocaleDateString('en-DE',{day:'numeric',month:'short'})} (payday) · ${cycleItems.length} payment${cycleItems.length!==1?'s':''}`;
 
   const cc=document.getElementById('cycleCards');
   if(cycleItems.length===0){
@@ -1026,27 +1032,7 @@ function render(){
         </div>
       </div>`;
     }).join('');
-
-    cc.innerHTML=`<div class="month-card" style="margin-top:10px;border:none;background:transparent;border-radius:0">
-      <div class="mc-header" onclick="toggleBD(this)">
-        <div class="mc-left">
-          <div class="mc-dot" style="background:var(--teal)"></div>
-          <div>
-            <div class="mc-name">${cycleItems.length} payment${cycleItems.length>1?'s':''}</div>
-            <div class="mc-sub">${cycleEnd.toLocaleDateString('en-DE',{day:'numeric',month:'short'})} payday</div>
-          </div>
-        </div>
-        <div class="mc-right">
-          <div class="mc-net neg">${fmt(cycleTotal)}</div>
-          <div class="mc-sub">due</div>
-        </div>
-      </div>
-      <div class="mc-bar"><div class="mc-bar-fill" style="width:100%;background:var(--teal)"></div></div>
-      <div class="mc-breakdown">
-        ${rows}
-        <span class="collapse-btn" onclick="event.stopPropagation();this.closest('.mc-breakdown').classList.remove('open')">↑ Collapse</span>
-      </div>
-    </div>`;
+    cc.innerHTML = `<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:4px">${rows}</div>`;
   }
 
   // Upcoming 7 days
@@ -1353,6 +1339,7 @@ window.closeOnBg      = closeOnBg;
 window.addPayment     = addPayment;
 window.deletePayment  = deletePayment;
 window.cycleTag         = cycleTag;
+window.toggleCycleCard  = toggleCycleCard;
 window.toggleCycleGroup = toggleCycleGroup;
 window.hardRefresh      = hardRefresh;
 window.copyExport       = copyExport;
