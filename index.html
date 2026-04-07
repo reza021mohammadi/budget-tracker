@@ -374,6 +374,8 @@ canvas{width:100%!important;display:block;}
 /* ── SWIPE TO DELETE ── */
 .payment-item{position:relative;overflow:hidden;}
 .swipe-delete-bg{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--danger);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;border-radius:0 13px 13px 0;opacity:0;pointer-events:none;}
+.ing-input-row{position:relative;overflow:hidden;}
+.ing-swipe-bg{position:absolute;right:0;top:0;bottom:0;width:60px;background:var(--danger);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;border-radius:0 8px 8px 0;opacity:0;pointer-events:none;}
 
 /* ── ACTUAL SPENDING ── */
 .spending-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px;margin:10px 16px 0;overflow:hidden;}
@@ -1642,6 +1644,8 @@ let calMonth = new Date().getMonth();
 let mealModalDate = null;
 let mealModalType = 'breakfast';
 let modalIngredients = [];
+// Expose to window so inline onblur handlers can write back to them
+Object.defineProperty(window,'modalIngredients',{get:()=>modalIngredients,set:v=>{modalIngredients=v;}});
 
 function dateKey(y, m, d) {
   return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -1720,20 +1724,37 @@ function renderMealsLibrary() {
     return;
   }
   container.innerHTML=mealLibrary.map((m,i)=>`
-    <div class="lib-item">
+    <div class="lib-item" onclick="openLibraryModal(${i})" style="cursor:pointer;">
       <div class="lib-item-info">
         <div class="lib-item-name">${m.name}</div>
         <div class="lib-item-ings">${m.ingredients.length>0?m.ingredients.map(x=>x.name).join(', '):'No ingredients'}</div>
       </div>
-      <button class="lib-del-btn" onclick="deleteLibraryMeal(${i})">×</button>
+      <span style="font-size:11px;color:var(--muted);margin-right:4px;">Edit</span>
+      <button class="lib-del-btn" onclick="event.stopPropagation();deleteLibraryMeal(${i})">×</button>
     </div>`).join('');
 }
 
 let libIngredients=[];
-function openLibraryModal() {
-  libIngredients=[];
-  document.getElementById('libMealName').value='';
-  document.getElementById('libIngList').innerHTML='';
+Object.defineProperty(window,'libIngredients',{get:()=>libIngredients,set:v=>{libIngredients=v;}});
+let libEditIndex = -1;
+
+function openLibraryModal(editIdx = -1) {
+  libEditIndex = editIdx;
+  if(editIdx >= 0) {
+    // Edit mode — pre-fill
+    const m = mealLibrary[editIdx];
+    libIngredients = m.ingredients.map(i=>({...i}));
+    document.getElementById('libMealName').value = m.name;
+    document.querySelector('#libraryModalOverlay .modal-title').textContent = 'Edit Meal';
+    document.querySelector('#libraryModalOverlay .btn-submit').textContent = 'Save Changes';
+  } else {
+    // New mode
+    libIngredients = [];
+    document.getElementById('libMealName').value = '';
+    document.querySelector('#libraryModalOverlay .modal-title').textContent = 'Add to Meals List';
+    document.querySelector('#libraryModalOverlay .btn-submit').textContent = 'Save to List';
+  }
+  renderLibIngInputs();
   document.getElementById('libraryModalOverlay').classList.add('open');
 }
 function closeLibraryModal() {
@@ -1752,24 +1773,42 @@ function addLibIngInput() {
   const inputs=document.querySelectorAll('#libIngList input[type=text]');
   if(inputs.length) inputs[inputs.length-1].focus();
 }
+// Window-exposed splice wrappers (needed because inline onclick can't access module vars)
+function spliceLibIng(i) {
+  captureLibIngInputs();
+  libIngredients.splice(i,1);
+  renderLibIngInputs();
+}
+function toggleLibIng(i) {
+  captureLibIngInputs();
+  libIngredients[i].have = !libIngredients[i].have;
+  renderLibIngInputs();
+}
 function renderLibIngInputs() {
   document.getElementById('libIngList').innerHTML=libIngredients.map((ing,i)=>`
     <div class="ing-input-row">
+      <div class="ing-swipe-bg">Delete</div>
       <input type="text" placeholder="Ingredient" value="${ing.name.replace(/"/g,'&quot;')}"
-        onblur="libIngredients[${i}].name=this.value">
+        onblur="libIngredients[${i}]&&(libIngredients[${i}].name=this.value)">
       <button type="button" class="ing-have-toggle ${ing.have?'have':''}"
-        onclick="captureLibIngInputs();libIngredients[${i}].have=!libIngredients[${i}].have;renderLibIngInputs()">
+        onclick="toggleLibIng(${i})">
         ${ing.have?'✅ Have':'🛒 Buy'}
       </button>
-      <button type="button" class="ing-del"
-        onclick="captureLibIngInputs();libIngredients.splice(${i},1);renderLibIngInputs()">×</button>
     </div>`).join('');
+  document.querySelectorAll('#libIngList .ing-input-row').forEach((row,i)=>{
+    attachIngSwipe(row, ()=>spliceLibIng(i));
+  });
 }
 function saveLibraryMeal() {
   captureLibIngInputs();
   const name=document.getElementById('libMealName').value.trim();
   if(!name){alert('Please enter a meal name.');return;}
-  mealLibrary.push({name, ingredients:libIngredients.filter(i=>i.name.trim()).map(i=>({name:i.name.trim(),have:i.have}))});
+  const entry = {name, ingredients:libIngredients.filter(i=>i.name.trim()).map(i=>({name:i.name.trim(),have:i.have}))};
+  if(libEditIndex >= 0) {
+    mealLibrary[libEditIndex] = entry; // update existing
+  } else {
+    mealLibrary.push(entry); // add new
+  }
   save();
   closeLibraryModal();
   renderMealsLibrary();
@@ -1986,23 +2025,36 @@ function addIngredientInput() {
   captureIngInputs();
   modalIngredients.push({name:'',have:false});
   renderIngInputs();
-  // Focus the new input
   const inputs=document.querySelectorAll('#ingInputList input[type=text]');
   if(inputs.length) inputs[inputs.length-1].focus();
+}
+// Window-exposed wrappers for inline onclick (module scope can't be accessed directly)
+function spliceModalIng(i) {
+  captureIngInputs();
+  modalIngredients.splice(i,1);
+  renderIngInputs();
+}
+function toggleModalIng(i) {
+  captureIngInputs();
+  modalIngredients[i].have = !modalIngredients[i].have;
+  renderIngInputs();
 }
 function renderIngInputs() {
   const list=document.getElementById('ingInputList');
   list.innerHTML=modalIngredients.map((ing,i)=>`
     <div class="ing-input-row">
+      <div class="ing-swipe-bg">Delete</div>
       <input type="text" placeholder="Ingredient" value="${ing.name.replace(/"/g,'&quot;')}"
-        onblur="modalIngredients[${i}].name=this.value">
+        onblur="modalIngredients[${i}]&&(modalIngredients[${i}].name=this.value)">
       <button type="button" class="ing-have-toggle ${ing.have?'have':''}"
-        onclick="captureIngInputs();modalIngredients[${i}].have=!modalIngredients[${i}].have;renderIngInputs()">
+        onclick="toggleModalIng(${i})">
         ${ing.have?'✅ Have':'🛒 Buy'}
       </button>
-      <button type="button" class="ing-del"
-        onclick="captureIngInputs();modalIngredients.splice(${i},1);renderIngInputs()">×</button>
     </div>`).join('');
+  // Attach swipe-to-delete to each row
+  list.querySelectorAll('.ing-input-row').forEach((row,i)=>{
+    attachIngSwipe(row, ()=>spliceModalIng(i));
+  });
 }
 function saveMeal() {
   captureIngInputs();
@@ -2081,6 +2133,32 @@ function attachSwipeDelete(el, id) {
       el.style.transition = 'transform .2s';
       el.style.transform = '';
       if(bg) bg.style.opacity = 0;
+    }
+  });
+}
+
+// Generic swipe-to-delete for ingredient rows
+function attachIngSwipe(el, onDelete) {
+  let startX = 0, dx = 0;
+  const bg = el.querySelector('.ing-swipe-bg');
+  el.addEventListener('touchstart', e => { startX = e.touches[0].clientX; dx = 0; el.style.transition=''; }, {passive:true});
+  el.addEventListener('touchmove', e => {
+    dx = e.touches[0].clientX - startX;
+    if(dx < -10) {
+      if(bg) bg.style.opacity = Math.min(1, Math.abs(dx)/60);
+      el.style.transform = `translateX(${Math.max(-70, dx)}px)`;
+    }
+  }, {passive:true});
+  el.addEventListener('touchend', () => {
+    if(dx < -50) {
+      el.style.transition = 'transform .2s, opacity .2s';
+      el.style.transform = 'translateX(-100%)';
+      el.style.opacity = '0';
+      setTimeout(onDelete, 200);
+    } else {
+      el.style.transition = 'transform .2s';
+      el.style.transform = '';
+      if(bg) bg.style.opacity = '0';
     }
   });
 }
@@ -2323,6 +2401,10 @@ window.openLibraryModal  = openLibraryModal;
 window.closeLibraryModal = closeLibraryModal;
 window.captureIngInputs  = captureIngInputs;
 window.captureLibIngInputs=captureLibIngInputs;
+window.spliceModalIng    = spliceModalIng;
+window.toggleModalIng    = toggleModalIng;
+window.spliceLibIng      = spliceLibIng;
+window.toggleLibIng      = toggleLibIng;
 window.addLibIngInput    = addLibIngInput;
 window.renderLibIngInputs= renderLibIngInputs;
 window.saveLibraryMeal   = saveLibraryMeal;
