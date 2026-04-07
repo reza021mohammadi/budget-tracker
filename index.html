@@ -1002,11 +1002,11 @@ function render(){
   document.getElementById('paydayDate').textContent=nextPay.toLocaleDateString('en-DE',{day:'numeric',month:'short',year:'numeric'});
   document.getElementById('daysToPayday').textContent=dl===0?'🎉 Today!':dl===1?'Tomorrow':dl+' days';
 
-  // Pay cycle: from today to next payday — single collapsible list
+  // Pay cycle: from today to next payday — same structure as forecast month cards
   const cycleEnd=nextOcc(payday);
   const cycleItems=monthly.filter(p=>{
     const nx=nextOcc(p.day); return nx<=cycleEnd;
-  }).sort((a,b)=>{const da=daysUntil(nextOcc(a.day)),db=daysUntil(nextOcc(b.day));return da-db;});
+  }).sort((a,b)=>daysUntil(nextOcc(a.day))-daysUntil(nextOcc(b.day)));
   const cycleTotal=cycleItems.reduce((s,p)=>s+p.amount,0);
   document.getElementById('cycleTotal').textContent=fmt(cycleTotal);
   document.getElementById('cycleRange').textContent=`Today → ${cycleEnd.toLocaleDateString('en-DE',{day:'numeric',month:'short'})} (payday)`;
@@ -1018,27 +1018,35 @@ function render(){
     const rows=cycleItems.map(p=>{
       const d=daysUntil(nextOcc(p.day));
       const dayLabel=d===0?'Today':d===1?'Tomorrow':'Day '+p.day;
-      return`<div class="cycle-item">
-        <div class="ci-left"><div class="ci-dot ${catDot(p.cat)}"></div><span>${p.name}</span></div>
+      return`<div class="bdr">
+        <div class="bdr-left"><div class="bdr-dot ${catDot(p.cat)}"></div>${p.name}</div>
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="ci-day">${dayLabel}</span>
-          <span class="ci-amount">${fmt(p.amount)}</span>
+          <span style="font-size:10px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 6px">${dayLabel}</span>
+          <span class="bdr-amt">${fmt(p.amount)}</span>
         </div>
       </div>`;
     }).join('');
 
-    cc.innerHTML=`<div class="cycle-card" style="margin-top:10px">
-      <div class="cycle-header" onclick="toggleCycleGroup(this)">
-        <div class="cycle-header-left">
-          <span>${cycleItems.length} payment${cycleItems.length>1?'s':''}</span>
+    cc.innerHTML=`<div class="month-card" style="margin-top:10px">
+      <div class="mc-header" onclick="toggleBD(this)">
+        <div class="mc-left">
+          <div class="mc-dot" style="background:var(--teal)"></div>
+          <div>
+            <div class="mc-name">${cycleItems.length} payment${cycleItems.length>1?'s':''}</div>
+            <div class="mc-sub">${cycleEnd.toLocaleDateString('en-DE',{day:'numeric',month:'short'})} payday</div>
+          </div>
         </div>
-        <div class="cycle-header-right">
-          <span class="cycle-chevron">▾</span>
+        <div class="mc-right">
+          <div class="mc-net neg">${fmt(cycleTotal)}</div>
+          <div class="mc-sub">due</div>
         </div>
       </div>
-      <div class="cycle-body">${rows}</div>
+      <div class="mc-bar"><div class="mc-bar-fill" style="width:100%;background:var(--teal)"></div></div>
+      <div class="mc-breakdown">
+        ${rows}
+        <span class="collapse-btn" onclick="event.stopPropagation();this.closest('.mc-breakdown').classList.remove('open')">↑ Collapse</span>
+      </div>
     </div>`;
-  }
 
   // Upcoming 7 days
   const up=upcomingPayments(7);
