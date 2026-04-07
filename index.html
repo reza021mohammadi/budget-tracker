@@ -659,6 +659,35 @@ function updateFamilyBadge() {
   if (el && _familyCode) {
     el.textContent = '🏠 ' + _familyCode;
     el.style.display = 'flex';
+    el.title = 'Tap to leave this household';
+    el.style.cursor = 'pointer';
+    el.onclick = () => {
+      if (confirm('Leave household ' + _familyCode + '?\n\nYou can join a different one afterwards.')) {
+        leaveHousehold();
+      }
+    };
+  }
+}
+
+async function leaveHousehold() {
+  if (!_db || !_uid) return;
+  setSyncBadge('syncing', '⏳ Leaving…');
+  try {
+    // Clear family code from user profile
+    await setDoc(doc(_db, 'users', _uid, 'profile', 'main'), { familyCode: '' });
+    // Stop real-time listener
+    if (_unsubscribe) { _unsubscribe(); _unsubscribe = null; }
+    _familyCode = null;
+    // Hide the badge
+    const el = document.getElementById('familyCodeBadge');
+    if (el) el.style.display = 'none';
+    setSyncBadge('', '');
+    // Show family setup screen to join a new one
+    showFamilySetup();
+    setFamilyStatus('You have left the household. Create a new one or join your partner\'s.', false);
+  } catch(e) {
+    setSyncBadge('offline', '🔴 Failed to leave');
+    console.error(e);
   }
 }
 
