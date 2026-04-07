@@ -38,6 +38,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .summary-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
 .summary-card.c-income::before{background:var(--green);}
 .summary-card.c-grocery::before{background:var(--orange);}
+.summary-card.c-recreation::before{background:var(--teal);}
 .summary-card.c-costs::before{background:var(--danger);}
 .summary-card.c-remaining::before{background:var(--accent);}
 .summary-card.c-savings::before{background:var(--purple);}
@@ -47,6 +48,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .card-value{font-family:'DM Serif Display',serif;font-size:24px;margin-top:5px;line-height:1;}
 .card-value.cv-income{color:var(--green);}
 .card-value.cv-grocery{color:var(--orange);}
+.card-value.cv-recreation{color:var(--teal);}
 .card-value.cv-costs{color:var(--danger);}
 .card-value.cv-remaining{color:var(--accent);}
 .card-value.cv-savings{color:var(--purple);}
@@ -374,6 +376,15 @@ canvas{width:100%!important;display:block;}
         <button onclick="updateField('grocery')">Save</button>
       </div>
     </div>
+    <!-- Recreation -->
+    <div class="summary-card c-recreation">
+      <div class="card-label">🎉 Recreation</div>
+      <div class="card-value cv-recreation" id="recreationDisplay">€0</div>
+      <div class="edit-row">
+        <input type="number" id="recreationInput" placeholder="200">
+        <button onclick="updateField('recreation')">Save</button>
+      </div>
+    </div>
     <!-- Total costs -->
     <div class="summary-card c-costs full-width">
       <div class="card-label">Total Costs (fixed + groceries)</div>
@@ -442,6 +453,7 @@ canvas{width:100%!important;display:block;}
         <div class="legend-item"><div class="legend-dot" style="background:#ff4e4e"></div>Fixed Costs</div>
         <div class="legend-item"><div class="legend-dot" style="background:#3ecf8e"></div>Net Remaining</div>
         <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>Groceries</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#38bdf8"></div>Recreation</div>
       </div>
     </div>
 
@@ -696,6 +708,7 @@ function applyCloudData(d) {
   if (d.payments)         { payments    = d.payments;    localStorage.setItem('bgt_p',  JSON.stringify(d.payments)); }
   if (d.netIncome!=null)  { netIncome   = d.netIncome;   localStorage.setItem('bgt_i',  d.netIncome); }
   if (d.grocery!=null)    { grocery     = d.grocery;     localStorage.setItem('bgt_g',  d.grocery); }
+  if (d.recreation!=null) { recreation  = d.recreation;  localStorage.setItem('bgt_r',  d.recreation); }
   if (d.payday!=null)     { payday      = d.payday;      localStorage.setItem('bgt_pd', d.payday); }
   if (d.savingsGoal!=null){ savingsGoal = d.savingsGoal; localStorage.setItem('bgt_sg', d.savingsGoal); }
   if (d.bufferAmt!=null)  { bufferAmt   = d.bufferAmt;   localStorage.setItem('bgt_bf', d.bufferAmt); }
@@ -802,7 +815,7 @@ async function saveToCloud() {
   setSyncBadge('syncing', '⏳ Saving…');
   try {
     await setDoc(doc(_db, 'households', _familyCode, 'data', 'main'), {
-      payments, netIncome, grocery, payday, savingsGoal, bufferAmt,
+      payments, netIncome, grocery, recreation, payday, savingsGoal, bufferAmt,
       updatedAt: new Date().toISOString()
     });
     setSyncBadge('synced', '✅ Synced');
@@ -843,6 +856,7 @@ const DEF = [
 let payments   = JSON.parse(localStorage.getItem('bgt_p')||'null') || JSON.parse(JSON.stringify(DEF));
 let netIncome  = parseFloat(localStorage.getItem('bgt_i') ||'3828');
 let grocery    = parseFloat(localStorage.getItem('bgt_g') ||'300');
+let recreation = parseFloat(localStorage.getItem('bgt_r') ||'0');
 let payday     = parseInt(localStorage.getItem('bgt_pd')  ||'25');
 let savingsGoal= parseFloat(localStorage.getItem('bgt_sg')||'500');
 let bufferAmt  = parseFloat(localStorage.getItem('bgt_bf')||'500');
@@ -855,6 +869,7 @@ function save(){
   localStorage.setItem('bgt_p',JSON.stringify(payments));
   localStorage.setItem('bgt_i',netIncome);
   localStorage.setItem('bgt_g',grocery);
+  localStorage.setItem('bgt_r',recreation);
   localStorage.setItem('bgt_pd',payday);
   localStorage.setItem('bgt_sg',savingsGoal);
   localStorage.setItem('bgt_bf',bufferAmt);
@@ -884,7 +899,7 @@ function isActiveInMonth(p,y,m){
   const e=parseEndDate(p.endDate);
   return !e || e>=new Date(y,m,1);
 }
-function costsForMonth(y,m){ return payments.filter(p=>isActiveInMonth(p,y,m)).reduce((s,p)=>s+p.amount,0)+grocery; }
+function costsForMonth(y,m){ return payments.filter(p=>isActiveInMonth(p,y,m)).reduce((s,p)=>s+p.amount,0)+grocery+recreation; }
 function fixedCostsForMonth(y,m){ return payments.filter(p=>isActiveInMonth(p,y,m)).reduce((s,p)=>s+p.amount,0); }
 function nextOcc(day){ const n=today(),d=new Date(n.getFullYear(),n.getMonth(),day); if(d<=n) d.setMonth(d.getMonth()+1); return d; }
 function daysUntil(dt){ const n=today(); return Math.ceil((dt-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/864e5); }
@@ -909,7 +924,7 @@ function switchView(v,el){
 function render(){
   const now=today(), monthly=payments.filter(p=>!p.onetime);
   const fixed=monthly.reduce((s,p)=>s+p.amount,0);
-  const total=fixed+grocery;
+  const total=fixed+grocery+recreation;
   const rem=netIncome-total;
   const pct=Math.min(100,(total/netIncome)*100);
 
@@ -918,14 +933,16 @@ function render(){
   document.getElementById('paydayDisplay').textContent=payday;
   document.getElementById('incomeDisplay').textContent=fmt(netIncome);
   document.getElementById('groceryDisplay').textContent=fmt(grocery);
+  document.getElementById('recreationDisplay').textContent=fmt(recreation);
   document.getElementById('incomeInput').value=netIncome;
   document.getElementById('groceryInput').value=grocery;
+  document.getElementById('recreationInput').value=recreation;
   document.getElementById('savingsInput').value=savingsGoal;
   document.getElementById('bufferInput').value=bufferAmt||'';
 
   // Total costs
   document.getElementById('totalCosts').textContent=fmt(total);
-  document.getElementById('costBreakdown').textContent=`Fixed ${fmt(fixed)} + Groceries ${fmt(grocery)}`;
+  document.getElementById('costBreakdown').textContent=`Fixed ${fmt(fixed)} + Groceries ${fmt(grocery)} + Recreation ${fmt(recreation)}`;
   document.getElementById('costFill').style.width=pct+'%';
   document.getElementById('costPct').textContent=pct.toFixed(1)+'% of net income';
 
@@ -1040,8 +1057,8 @@ function buildForecast(){
     const d=new Date(now.getFullYear(),now.getMonth()+i,1);
     const y=d.getFullYear(),m=d.getMonth();
     const fixed=fixedCostsForMonth(y,m);
-    const total=fixed+grocery;
-    return{year:y,month:m,label:d.toLocaleDateString('en-DE',{month:'short',year:'numeric'}),short:d.toLocaleDateString('en-DE',{month:'short'}),fixed,grocery,total,net:netIncome-total,isCurrent:i===0,payments:payments.filter(p=>!p.onetime).map(p=>({...p,active:isActiveInMonth(p,y,m)}))};
+    const total=fixed+grocery+recreation;
+    return{year:y,month:m,label:d.toLocaleDateString('en-DE',{month:'short',year:'numeric'}),short:d.toLocaleDateString('en-DE',{month:'short'}),fixed,grocery,recreation,total,net:netIncome-total,isCurrent:i===0,payments:payments.filter(p=>!p.onetime).map(p=>({...p,active:isActiveInMonth(p,y,m)}))};
   });
 }
 
@@ -1077,6 +1094,7 @@ function drawBarChart(data){
     draw(cx-bW*1.6,d.fixed,'#ff4e4e','rgba(255,78,78,.3)');
     draw(cx-bW*.1,Math.max(0,d.net),'#3ecf8e','rgba(62,207,142,.3)');
     draw(cx+bW*1.1,d.grocery,'#f5a623','rgba(245,165,35,.3)');
+    draw(cx+bW*2.3,d.recreation,'#38bdf8','rgba(56,189,248,.3)');
     ctx.fillStyle=d.isCurrent?'#c8f044':'#7a7a90';ctx.font=(d.isCurrent?'bold ':'')+' 10px DM Sans';ctx.textAlign='center';
     ctx.fillText(d.short,cx,H-pad.bottom+13);
   });
@@ -1130,7 +1148,8 @@ function drawDonut(d){
     {label:'Subs',     color:'#5b93ef',val:payments.filter(p=>!p.onetime&&p.cat==='sub').reduce((s,p)=>s+p.amount,0)},
     {label:'PayPal',   color:'#00b4d8',val:payments.filter(p=>!p.onetime&&p.cat==='paypal').reduce((s,p)=>s+p.amount,0)},
     {label:'Home',     color:'#3ecf8e',val:payments.filter(p=>!p.onetime&&p.cat==='home').reduce((s,p)=>s+p.amount,0)},
-    {label:'Grocery',  color:'#eb9234',val:grocery},
+    {label:'Grocery',    color:'#eb9234',val:grocery},
+    {label:'Recreation', color:'#38bdf8',val:recreation},
   ].filter(c=>c.val>0);
   const total=cats.reduce((s,c)=>s+c.val,0);
 
@@ -1217,6 +1236,7 @@ function copyExport(){
 function updateField(f){
   if(f==='income'){const v=parseFloat(document.getElementById('incomeInput').value);if(!isNaN(v)&&v>0)netIncome=v;}
   if(f==='grocery'){const v=parseFloat(document.getElementById('groceryInput').value);if(!isNaN(v)&&v>=0)grocery=v;}
+  if(f==='recreation'){const v=parseFloat(document.getElementById('recreationInput').value);if(!isNaN(v)&&v>=0)recreation=v;}
   if(f==='savings'){const v=parseFloat(document.getElementById('savingsInput').value);if(!isNaN(v)&&v>=0)savingsGoal=v;}
   if(f==='buffer'){const v=parseFloat(document.getElementById('bufferInput').value);if(!isNaN(v)&&v>=0)bufferAmt=v;}
   save(); render(); if(activeView==='forecast') renderForecast();
