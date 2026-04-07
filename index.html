@@ -237,16 +237,95 @@ canvas{width:100%!important;display:block;}
 .sync-badge.offline{color:var(--danger);border-color:rgba(255,78,78,.3);background:rgba(255,78,78,.06);}
 .sync-badge.error{color:var(--danger);}
 
+/* SIGN-IN OVERLAY */
+.signin-overlay{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:20px;}
+.signin-overlay.hidden{display:none;}
+.signin-logo{font-size:52px;}
+.signin-title{font-family:'DM Serif Display',serif;font-size:28px;color:var(--text);text-align:center;}
+.signin-sub{font-size:14px;color:var(--muted);text-align:center;max-width:280px;line-height:1.6;}
+.signin-google-btn{display:flex;align-items:center;gap:12px;background:#fff;color:#1f1f1f;border:none;border-radius:14px;padding:14px 24px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.3);transition:all .2s;font-family:'DM Sans',sans-serif;}
+.signin-google-btn:active{transform:scale(.97);}
+.signin-google-btn svg{width:20px;height:20px;flex-shrink:0;}
+.signin-note{font-size:11px;color:var(--muted);text-align:center;max-width:260px;line-height:1.5;}
+.signin-spinner{font-size:13px;color:var(--muted);}
+
+/* FAMILY SETUP OVERLAY */
+.family-overlay{position:fixed;inset:0;background:rgba(15,15,19,0.97);z-index:998;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;gap:16px;}
+.family-overlay.hidden{display:none;}
+.family-title{font-family:'DM Serif Display',serif;font-size:24px;text-align:center;}
+.family-sub{font-size:13px;color:var(--muted);text-align:center;max-width:300px;line-height:1.6;}
+.family-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;width:100%;max-width:340px;}
+.family-card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:10px;}
+.family-btn{width:100%;padding:13px;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:8px;}
+.family-btn.primary{background:var(--accent);color:#0f0f13;}
+.family-btn.secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.family-btn:active{opacity:.85;transform:scale(.98);}
+.family-code-display{font-family:monospace;font-size:28px;font-weight:700;letter-spacing:6px;color:var(--accent);text-align:center;padding:14px;background:rgba(200,240,68,.06);border:1px solid rgba(200,240,68,.2);border-radius:12px;margin:8px 0;}
+.family-or{text-align:center;color:var(--muted);font-size:12px;margin:6px 0;}
+.family-status{font-size:12px;text-align:center;min-height:18px;margin-top:4px;}
+.family-code-badge{display:none;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:5px 9px;font-size:11px;color:var(--muted);font-weight:600;}
+
 /* EXPORT sheet */
 .export-sheet{background:var(--surface2);border-radius:11px;padding:14px;font-size:12px;color:var(--muted);margin-top:10px;white-space:pre;overflow-x:auto;line-height:1.7;}
 </style>
 </head>
 <body>
 
+<!-- ══ GOOGLE SIGN-IN OVERLAY ══ -->
+<div class="signin-overlay" id="signinOverlay">
+  <div class="signin-logo">💶</div>
+  <div class="signin-title">Budget Tracker</div>
+  <div class="signin-sub">Sign in with Google to sync your data across all your devices automatically.</div>
+  <button class="signin-google-btn" id="googleSignInBtn">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+    </svg>
+    Sign in with Google
+  </button>
+  <div class="signin-note">Your data is private and only accessible with your Google account. No one else can see it.</div>
+  <div class="signin-spinner" id="signinSpinner" style="display:none">⏳ Signing in…</div>
+</div>
+
+<!-- ══ FAMILY SETUP OVERLAY ══ -->
+<div class="family-overlay hidden" id="familyOverlay">
+  <div class="signin-logo">🏠</div>
+  <div class="family-title">Set Up Your Household</div>
+  <div class="family-sub">Create a household to share your budget, or join your partner's existing one.</div>
+
+  <!-- Create -->
+  <div class="family-card">
+    <div class="family-card-title">Create a new household</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">You'll get a code to share with your partner.</div>
+    <button class="family-btn primary" id="createHouseholdBtn">✨ Create Household</button>
+    <div id="createdCodeWrap" style="display:none">
+      <div style="font-size:12px;color:var(--muted);margin-top:10px;margin-bottom:4px;text-align:center;">Share this code with your partner:</div>
+      <div class="family-code-display" id="createdCodeDisplay">——</div>
+      <div style="font-size:11px;color:var(--muted);text-align:center;">They enter this in the "Join" section below</div>
+    </div>
+  </div>
+
+  <div class="family-or">— or —</div>
+
+  <!-- Join -->
+  <div class="family-card">
+    <div class="family-card-title">Join existing household</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Enter the code your partner shared with you.</div>
+    <input class="form-input" id="joinCodeInput" type="text" placeholder="e.g. REZA42" maxlength="8"
+      style="text-transform:uppercase;letter-spacing:3px;font-size:16px;font-weight:700;text-align:center;">
+    <button class="family-btn secondary" id="joinHouseholdBtn">🔗 Join Household</button>
+  </div>
+
+  <div class="family-status" id="familyStatus"></div>
+</div>
+
 <div class="header">
   <div class="header-top">
     <div class="header-title">💶 Budget</div>
     <div class="header-actions">
+      <div id="familyCodeBadge" class="family-code-badge"></div>
       <div id="syncBadge" class="sync-badge">⏳ Connecting…</div>
       <div class="payday-btn" onclick="openPaydayModal()">📅 Payday <span id="paydayDisplay">25</span></div>
       <div class="export-btn" onclick="switchView('export',document.querySelector('[data-v=export]'))" title="Export">📤</div>
@@ -477,11 +556,11 @@ const FIREBASE_CONFIG = {
 // ═══════════════════════════════════════════════════════════════════
 
 import { initializeApp }            from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, arrayUnion } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 
 // ── Firebase init ─────────────────────────────────────────────────
-let _db = null, _uid = null, _isSaving = false, _unsubscribe = null;
+let _db = null, _uid = null, _isSaving = false, _unsubscribe = null, _auth = null, _familyCode = null;
 
 function setSyncBadge(state, label) {
   const b = document.getElementById('syncBadge');
@@ -489,8 +568,95 @@ function setSyncBadge(state, label) {
   b.textContent = label;
 }
 
+function showSignIn()   { document.getElementById('signinOverlay').classList.remove('hidden'); }
+function hideSignIn()   { document.getElementById('signinOverlay').classList.add('hidden'); }
+function showFamilySetup() { document.getElementById('familyOverlay').classList.remove('hidden'); }
+function hideFamilySetup() { document.getElementById('familyOverlay').classList.add('hidden'); }
+function setFamilyStatus(msg, isError) {
+  const el = document.getElementById('familyStatus');
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--danger)' : 'var(--green)';
+}
+
+// Generate a random 6-char uppercase household code
+function genCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+// After sign-in, check if this user already belongs to a household
+async function checkHousehold(uid) {
+  setSyncBadge('syncing', '⏳ Syncing…');
+  try {
+    const profileSnap = await getDoc(doc(_db, 'users', uid, 'profile', 'main'));
+    if (profileSnap.exists() && profileSnap.data().familyCode) {
+      _familyCode = profileSnap.data().familyCode;
+      updateFamilyBadge();
+      startRealtimeSync();
+    } else {
+      // No household yet — show setup screen
+      setSyncBadge('', '');
+      showFamilySetup();
+    }
+  } catch(e) {
+    console.error('Profile load failed:', e);
+    setSyncBadge('offline', '🔴 Offline');
+  }
+}
+
+// Create a new household
+async function createHousehold() {
+  const code = genCode();
+  setFamilyStatus('Creating household…', false);
+  try {
+    // Write household doc with this user as first member
+    await setDoc(doc(_db, 'households', code), {
+      members: [_uid],
+      createdBy: _uid,
+      createdAt: new Date().toISOString()
+    });
+    // Save family code to user profile
+    await setDoc(doc(_db, 'users', _uid, 'profile', 'main'), { familyCode: code });
+    _familyCode = code;
+    hideFamilySetup();
+    updateFamilyBadge();
+    startRealtimeSync();
+  } catch(e) {
+    setFamilyStatus('Failed to create. Check your Firestore rules.', true);
+    console.error(e);
+  }
+}
+
+// Join an existing household with a code
+async function joinHousehold() {
+  const code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+  if (code.length < 4) { setFamilyStatus('Enter a valid household code.', true); return; }
+  setFamilyStatus('Looking up household…', false);
+  try {
+    const hhSnap = await getDoc(doc(_db, 'households', code));
+    if (!hhSnap.exists()) { setFamilyStatus('Code not found. Ask for the exact code.', true); return; }
+    // Add this user to the household's members list
+    await updateDoc(doc(_db, 'households', code), { members: arrayUnion(_uid) });
+    // Save family code to user profile
+    await setDoc(doc(_db, 'users', _uid, 'profile', 'main'), { familyCode: code });
+    _familyCode = code;
+    hideFamilySetup();
+    updateFamilyBadge();
+    startRealtimeSync();
+  } catch(e) {
+    setFamilyStatus('Failed to join. Check your Firestore rules.', true);
+    console.error(e);
+  }
+}
+
+function updateFamilyBadge() {
+  const el = document.getElementById('familyCodeBadge');
+  if (el && _familyCode) {
+    el.textContent = '🏠 ' + _familyCode;
+    el.style.display = 'flex';
+  }
+}
+
 function applyCloudData(d) {
-  // Called every time Firestore pushes an update to this device
   if (d.payments)         { payments    = d.payments;    localStorage.setItem('bgt_p',  JSON.stringify(d.payments)); }
   if (d.netIncome!=null)  { netIncome   = d.netIncome;   localStorage.setItem('bgt_i',  d.netIncome); }
   if (d.grocery!=null)    { grocery     = d.grocery;     localStorage.setItem('bgt_g',  d.grocery); }
@@ -502,19 +668,14 @@ function applyCloudData(d) {
   if (activeView === 'forecast') renderForecast();
 }
 
-function startRealtimeSync(uid) {
-  // Unsubscribe from any previous listener
+function startRealtimeSync() {
+  if (!_familyCode) return;
   if (_unsubscribe) _unsubscribe();
-
-  const docRef = doc(_db, 'users', uid, 'data', 'main');
-
+  const docRef = doc(_db, 'households', _familyCode, 'data', 'main');
   _unsubscribe = onSnapshot(docRef,
     (snap) => {
-      // Ignore snapshots triggered by our own saves (avoids flicker)
       if (_isSaving) return;
-      if (snap.exists()) {
-        applyCloudData(snap.data());
-      }
+      if (snap.exists()) applyCloudData(snap.data());
       setSyncBadge('synced', '✅ Synced');
     },
     (err) => {
@@ -527,30 +688,55 @@ function startRealtimeSync(uid) {
 try {
   const app = initializeApp(FIREBASE_CONFIG);
   _db = getFirestore(app);
-  const auth = getAuth(app);
+  _auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
 
-  onAuthStateChanged(auth, async (user) => {
+  // Handle redirect result (for mobile Safari which uses redirect instead of popup)
+  getRedirectResult(_auth).catch(() => {});
+
+  onAuthStateChanged(_auth, (user) => {
     if (user) {
       _uid = user.uid;
-      setSyncBadge('syncing', '⏳ Syncing…');
-      startRealtimeSync(_uid);   // ← real-time listener starts here
+      hideSignIn();
+      checkHousehold(_uid);   // ← check/setup household first
     } else {
-      setSyncBadge('syncing', '⏳ Signing in…');
-      try { await signInAnonymously(auth); }
-      catch(e) { setSyncBadge('offline', '🔴 Auth failed'); console.error(e); }
+      showSignIn();
+      setSyncBadge('', '');
     }
   });
+
+  // Google sign-in button — try popup first, fall back to redirect (for Safari iOS)
+  document.getElementById('googleSignInBtn').addEventListener('click', async () => {
+    document.getElementById('signinSpinner').style.display = 'block';
+    document.getElementById('googleSignInBtn').style.display = 'none';
+    try {
+      await signInWithPopup(_auth, provider);
+    } catch(e) {
+      if (e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request' || e.code === 'auth/popup-closed-by-user') {
+        // Fall back to redirect for browsers that block popups (e.g. Safari iOS)
+        await signInWithRedirect(_auth, provider);
+      } else {
+        document.getElementById('signinSpinner').textContent = '❌ Sign-in failed. Try again.';
+        document.getElementById('googleSignInBtn').style.display = 'flex';
+        console.error(e);
+      }
+    }
+  });
+
+  // Expose sign-out for future use
+  window.signOut = () => signOut(_auth);
+
 } catch(e) {
   setSyncBadge('error', '❌ Config error');
   console.error('Firebase init failed — did you paste your config?', e);
 }
 
 async function saveToCloud() {
-  if (!_db || !_uid) return;
-  _isSaving = true;   // suppress the echo snapshot on this device
+  if (!_db || !_uid || !_familyCode) return;
+  _isSaving = true;
   setSyncBadge('syncing', '⏳ Saving…');
   try {
-    await setDoc(doc(_db, 'users', _uid, 'data', 'main'), {
+    await setDoc(doc(_db, 'households', _familyCode, 'data', 'main'), {
       payments, netIncome, grocery, payday, savingsGoal, bufferAmt,
       updatedAt: new Date().toISOString()
     });
@@ -559,7 +745,6 @@ async function saveToCloud() {
     setSyncBadge('offline', '🔴 Save failed');
     console.error('Cloud save failed:', e);
   } finally {
-    // Small delay then re-enable incoming updates
     setTimeout(() => { _isSaving = false; }, 1500);
   }
 }
@@ -999,6 +1184,48 @@ window.addPayment     = addPayment;
 window.deletePayment  = deletePayment;
 window.copyExport     = copyExport;
 window.toggleBD       = toggleBD;
+
+// Wire up family setup buttons
+document.getElementById('createHouseholdBtn').addEventListener('click', async () => {
+  document.getElementById('createHouseholdBtn').disabled = true;
+  const code = genCode();
+  document.getElementById('createdCodeDisplay').textContent = code;
+  document.getElementById('createdCodeWrap').style.display = 'block';
+  setFamilyStatus('Creating household…', false);
+  try {
+    await setDoc(doc(_db, 'households', code), {
+      members: [_uid], createdBy: _uid, createdAt: new Date().toISOString()
+    });
+    await setDoc(doc(_db, 'users', _uid, 'profile', 'main'), { familyCode: code });
+    _familyCode = code;
+    setFamilyStatus('✅ Household created! Share the code with your partner.', false);
+    setTimeout(() => { hideFamilySetup(); updateFamilyBadge(); startRealtimeSync(); }, 2000);
+  } catch(e) {
+    setFamilyStatus('Failed — check your Firestore rules.', true);
+    document.getElementById('createHouseholdBtn').disabled = false;
+    console.error(e);
+  }
+});
+
+document.getElementById('joinHouseholdBtn').addEventListener('click', async () => {
+  const code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+  if (code.length < 4) { setFamilyStatus('Enter a valid household code.', true); return; }
+  document.getElementById('joinHouseholdBtn').disabled = true;
+  setFamilyStatus('Looking up household…', false);
+  try {
+    const hhSnap = await getDoc(doc(_db, 'households', code));
+    if (!hhSnap.exists()) { setFamilyStatus('Code not found. Check spelling.', true); document.getElementById('joinHouseholdBtn').disabled = false; return; }
+    await updateDoc(doc(_db, 'households', code), { members: arrayUnion(_uid) });
+    await setDoc(doc(_db, 'users', _uid, 'profile', 'main'), { familyCode: code });
+    _familyCode = code;
+    setFamilyStatus('✅ Joined! Loading shared data…', false);
+    setTimeout(() => { hideFamilySetup(); updateFamilyBadge(); startRealtimeSync(); }, 1500);
+  } catch(e) {
+    setFamilyStatus('Failed — check your Firestore rules.', true);
+    document.getElementById('joinHouseholdBtn').disabled = false;
+    console.error(e);
+  }
+});
 
 // INIT
 document.getElementById('incomeInput').value=netIncome;
