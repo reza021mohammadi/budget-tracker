@@ -155,9 +155,11 @@ canvas{width:100%!important;display:block;}
 .legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
 
 /* Donut chart */
-.donut-wrap{display:flex;align-items:center;gap:16px;}
-.donut-legend{flex:1;display:flex;flex-direction:column;gap:7px;}
-.dl-item{display:flex;align-items:center;justify-content:space-between;font-size:12px;}
+.donut-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;}
+.donut-canvas-wrap{position:relative;display:flex;justify-content:center;width:100%;}
+#donutChart{display:block;border-radius:50%;}
+.donut-legend{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.dl-item{display:flex;align-items:center;justify-content:space-between;font-size:12px;background:var(--surface2);border-radius:8px;padding:6px 9px;}
 .dl-left{display:flex;align-items:center;gap:6px;}
 .dl-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
 .dl-pct{font-size:10px;color:var(--muted);}
@@ -359,7 +361,9 @@ canvas{width:100%!important;display:block;}
     <div class="chart-card">
       <div class="chart-title">Current Month — Cost by Category</div>
       <div class="donut-wrap">
-        <canvas id="donutChart" width="130" height="130" style="width:130px;height:130px;flex-shrink:0;"></canvas>
+        <div class="donut-canvas-wrap">
+          <canvas id="donutChart"></canvas>
+        </div>
         <div class="donut-legend" id="donutLegend"></div>
       </div>
     </div>
@@ -744,13 +748,22 @@ function drawDonut(d){
     {label:'Subs',     color:'#5b93ef',val:payments.filter(p=>!p.onetime&&p.cat==='sub').reduce((s,p)=>s+p.amount,0)},
     {label:'PayPal',   color:'#00b4d8',val:payments.filter(p=>!p.onetime&&p.cat==='paypal').reduce((s,p)=>s+p.amount,0)},
     {label:'Home',     color:'#3ecf8e',val:payments.filter(p=>!p.onetime&&p.cat==='home').reduce((s,p)=>s+p.amount,0)},
-    {label:'Grocery',  color:'#f5a623',val:grocery},
+    {label:'Grocery',  color:'#eb9234',val:grocery},
   ].filter(c=>c.val>0);
   const total=cats.reduce((s,c)=>s+c.val,0);
-  const dpr=window.devicePixelRatio||1, sz=130;
-  canvas.width=sz*dpr; canvas.height=sz*dpr;
+
+  // Compute size from container — ensures perfect square on all screens
+  const dpr=window.devicePixelRatio||1;
+  const container=canvas.parentElement;
+  const sz=Math.min(container.clientWidth, 220); // CSS pixels, max 220
+  // Set both the pixel buffer AND the CSS display size to be identical squares
+  canvas.width=Math.round(sz*dpr);
+  canvas.height=Math.round(sz*dpr);
+  canvas.style.width=sz+'px';
+  canvas.style.height=sz+'px';
+
   ctx.scale(dpr,dpr);
-  const cx=sz/2,cy=sz/2,r=sz/2-8,ri=r*.55;
+  const cx=sz/2, cy=sz/2, r=sz/2-10, ri=r*.54;
   let angle=-Math.PI/2;
   cats.forEach(c=>{
     const slice=(c.val/total)*Math.PI*2;
@@ -758,9 +771,13 @@ function drawDonut(d){
     ctx.fillStyle=c.color;ctx.fill();
     angle+=slice;
   });
+  // Inner circle (hole)
   ctx.beginPath();ctx.arc(cx,cy,ri,0,Math.PI*2);ctx.fillStyle='#18181f';ctx.fill();
-  ctx.fillStyle='#f0f0f5';ctx.font='bold 13px DM Sans';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(fmt(total).slice(0,8),cx,cy);
+  // Centre label
+  ctx.fillStyle='#f0f0f5';
+  ctx.font=`bold ${Math.round(sz*0.075)}px DM Sans`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(fmt(total),cx,cy);
 
   const leg=document.getElementById('donutLegend');
   leg.innerHTML=cats.map(c=>`<div class="dl-item"><div class="dl-left"><div class="dl-dot" style="background:${c.color}"></div><span>${c.label}</span></div><div><b>${fmt(c.val)}</b> <span class="dl-pct">${((c.val/total)*100).toFixed(0)}%</span></div></div>`).join('');
