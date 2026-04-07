@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0f0f13;--surface:#18181f;--surface2:#22222c;--border:#2e2e3e;--accent:#c8f044;--accent2:#7c6fef;--danger:#ff4e4e;--text:#f0f0f5;--muted:#7a7a90;--green:#3ecf8e;--orange:#f5a623;--yellow:#f5d020;--purple:#b57bee;--teal:#38bdf8;}
+body.light-mode{--bg:#f5f5f0;--surface:#ffffff;--surface2:#eeeee8;--border:#ddddd5;--text:#1a1a1a;--muted:#888880;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding-bottom:110px;}
 
@@ -363,6 +364,52 @@ canvas{width:100%!important;display:block;}
 .ing-del{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px;}
 .add-ing-btn{width:100%;padding:9px;border:1px dashed var(--border);border-radius:9px;background:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;margin-bottom:10px;}
 
+/* ── SEARCH BAR ── */
+.search-bar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:9px 13px;margin:10px 16px 0;}
+.search-bar input{flex:1;background:none;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;}
+.search-bar input::placeholder{color:var(--muted);}
+.search-icon{font-size:14px;color:var(--muted);}
+.search-clear{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0;}
+
+/* ── SWIPE TO DELETE ── */
+.payment-item{position:relative;overflow:hidden;}
+.swipe-delete-bg{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--danger);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;border-radius:0 13px 13px 0;opacity:0;pointer-events:none;}
+
+/* ── ACTUAL SPENDING ── */
+.spending-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px;margin:10px 16px 0;overflow:hidden;}
+.spending-month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.spending-month-label{font-size:13px;font-weight:700;color:var(--text);}
+.spending-nav-btn{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:3px 10px;color:var(--text);font-size:13px;cursor:pointer;}
+.spending-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);}
+.spending-row:first-child{border-top:none;}
+.spending-label{font-size:12px;color:var(--muted);width:90px;flex-shrink:0;}
+.spending-est{font-size:12px;color:var(--muted);width:60px;text-align:right;flex-shrink:0;}
+.spending-actual-input{width:70px;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:4px 7px;color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;text-align:right;}
+.spending-actual-input:focus{border-color:var(--accent);}
+.spending-diff{font-size:11px;font-weight:700;width:50px;text-align:right;flex-shrink:0;}
+.spending-diff.over{color:var(--danger);}
+.spending-diff.under{color:var(--green);}
+
+/* ── SINKING FUNDS ── */
+.fund-card{background:var(--surface);border:1px solid rgba(181,123,238,.3);border-radius:14px;padding:13px 14px;margin:0 16px 8px;}
+.fund-name{font-size:14px;font-weight:700;color:var(--text);}
+.fund-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.fund-bar{height:4px;background:var(--border);border-radius:99px;margin-top:8px;overflow:hidden;}
+.fund-bar-fill{height:100%;border-radius:99px;background:var(--purple);transition:width .5s;}
+.fund-pct{font-size:10px;color:var(--muted);margin-top:4px;}
+.fund-actions{display:flex;gap:7px;margin-top:8px;}
+.fund-action-btn{flex:1;padding:7px;border:1px solid var(--border);border-radius:9px;background:var(--surface2);color:var(--text);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.fund-action-btn.primary{background:var(--purple);color:#fff;border-color:var(--purple);}
+
+/* ── WHO UPDATED ── */
+.updated-by{font-size:10px;color:var(--muted);padding:4px 16px 0;}
+
+/* ── NOTIFICATIONS ── */
+.notif-btn{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:5px 9px;cursor:pointer;font-size:14px;color:var(--muted);}
+
+/* ── DARK/LIGHT TOGGLE ── */
+.theme-btn{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:5px 9px;cursor:pointer;font-size:14px;}
+
 /* EXPORT sheet */
 .export-sheet{background:var(--surface2);border-radius:11px;padding:14px;font-size:12px;color:var(--muted);margin-top:10px;white-space:pre;overflow-x:auto;line-height:1.7;}
 </style>
@@ -426,6 +473,8 @@ canvas{width:100%!important;display:block;}
     <div class="header-actions">
       <button id="familyCodeBadge" class="family-code-badge" style="display:none;" title="Tap to leave household"></button>
       <div id="syncBadge" class="sync-badge">⏳ Connecting…</div>
+      <button class="theme-btn" onclick="toggleTheme()" id="themeBtn" title="Toggle light/dark">🌙</button>
+      <button class="notif-btn" onclick="requestNotifPermission()" id="notifBtn" title="Enable notifications">🔔</button>
       <div class="payday-btn" onclick="openPaydayModal()">📅 Payday <span id="paydayDisplay">25</span></div>
       <button class="refresh-btn" onclick="hardRefresh()" title="Refresh">↻</button>
     </div>
@@ -528,6 +577,34 @@ canvas{width:100%!important;display:block;}
 
   <!-- Alerts -->
   <div class="alerts-row" id="alertsRow"></div>
+  <div class="updated-by" id="updatedByLabel"></div>
+
+  <!-- Actual Spending -->
+  <div style="padding:14px 16px 0;display:flex;align-items:center;justify-content:space-between;">
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;font-weight:600;">📊 Actual Spending</div>
+  </div>
+  <div class="spending-card">
+    <div class="spending-month-nav">
+      <button class="spending-nav-btn" onclick="changeSpendingMonth(-1)">‹</button>
+      <div class="spending-month-label" id="spendingMonthLabel">—</div>
+      <button class="spending-nav-btn" onclick="changeSpendingMonth(1)">›</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 60px 80px 50px;gap:4px;padding:4px 0;border-bottom:1px solid var(--border);margin-bottom:4px;">
+      <div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase">Category</div>
+      <div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;text-align:right">Budget</div>
+      <div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;text-align:right">Actual</div>
+      <div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;text-align:right">Diff</div>
+    </div>
+    <div id="spendingRows"></div>
+    <button class="btn-submit" style="margin-top:10px;font-size:12px;padding:10px;" onclick="saveSpending()">Save Actuals</button>
+  </div>
+
+  <!-- Sinking Funds -->
+  <div style="padding:14px 16px 6px;display:flex;align-items:center;justify-content:space-between;">
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;font-weight:600;">🏦 Sinking Funds</div>
+    <button onclick="openFundModal()" style="background:var(--purple);color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">+ Fund</button>
+  </div>
+  <div id="sinkingFundsList"></div>
 </div>
 
 <!-- ══════════ FORECAST ══════════ -->
@@ -566,6 +643,16 @@ canvas{width:100%!important;display:block;}
       </div>
     </div>
 
+    <!-- Actual vs Budget chart -->
+    <div class="chart-card">
+      <div class="chart-title">Actual vs Budget (this month)</div>
+      <canvas id="actualChart" height="160"></canvas>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#7c6fef"></div>Budget</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#c8f044"></div>Actual</div>
+      </div>
+    </div>
+
     <!-- Month cards -->
     <div class="month-cards" id="monthCards"></div>
   </div>
@@ -573,6 +660,11 @@ canvas{width:100%!important;display:block;}
 
 <!-- ══════════ PAYMENTS LIST ══════════ -->
 <div class="view" id="view-list">
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Search payments…" oninput="filterSearch(this.value)">
+    <button class="search-clear" onclick="clearSearch()" id="searchClearBtn" style="display:none">×</button>
+  </div>
   <div class="range-pills">
     <div class="range-pill active" onclick="filterRange('all',this)"><div class="rp-label">All</div><div class="rp-amount" id="range-all">€0</div></div>
     <div class="range-pill" onclick="filterRange('1',this)"><div class="rp-label">1–10</div><div class="rp-amount" id="range-1">€0</div></div>
@@ -615,9 +707,12 @@ canvas{width:100%!important;display:block;}
   <div class="meals-view active" id="meals-overview">
     <div class="meals-section-label">🛒 Shopping list</div>
     <div class="shop-card" id="shopCard">
-      <div class="shop-card-header">
-        <div class="shop-card-title">Missing ingredients</div>
-        <div class="shop-card-count" id="shopCount">0 items</div>
+      <div class="shop-card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div class="shop-card-title">Missing ingredients</div>
+          <div class="shop-card-count" id="shopCount">0 items</div>
+        </div>
+        <button onclick="shareShoppingListWhatsApp()" style="background:#25D366;color:#fff;border:none;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px;">📲 WhatsApp</button>
       </div>
       <div id="shopList"></div>
     </div>
@@ -631,6 +726,9 @@ canvas{width:100%!important;display:block;}
       <button class="cal-nav-btn" onclick="changeCalMonth(-1)">‹</button>
       <div class="cal-month-label" id="calMonthLabel">April 2026</div>
       <button class="cal-nav-btn" onclick="changeCalMonth(1)">›</button>
+    </div>
+    <div style="padding:6px 16px 2px;display:flex;justify-content:flex-end;">
+      <button onclick="copyWeekToNext()" style="background:rgba(124,111,239,.15);border:1px solid rgba(124,111,239,.4);border-radius:9px;padding:6px 12px;color:var(--accent2);font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">📋 Copy this week → next</button>
     </div>
     <div id="calDays"></div>
   </div>
@@ -676,6 +774,21 @@ canvas{width:100%!important;display:block;}
     </div>
     <button class="btn-submit" onclick="saveMeal()">Save Meal</button>
     <button class="btn-cancel" onclick="closeMealModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- ══ SINKING FUND MODAL ══ -->
+<div class="modal-overlay" id="fundModalOverlay" onclick="closeOnBg(event,'fundModalOverlay')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">New Sinking Fund</div>
+    <div class="form-group"><label class="form-label">Fund name</label><input class="form-input" id="fundName" type="text" placeholder="e.g. Holiday, New Car, Gifts"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Monthly amount (€)</label><input class="form-input" id="fundMonthly" type="number" placeholder="50" step="0.01"></div>
+      <div class="form-group"><label class="form-label">Goal (€)</label><input class="form-input" id="fundGoal" type="number" placeholder="1000" step="1"></div>
+    </div>
+    <button class="btn-submit" onclick="saveFund()">Save Fund</button>
+    <button class="btn-cancel" onclick="closeOnBg({target:null},'fundModalOverlay');document.getElementById('fundModalOverlay').classList.remove('open')">Cancel</button>
   </div>
 </div>
 
@@ -896,9 +1009,19 @@ function applyCloudData(d) {
   if (d.recreation!=null) { recreation  = d.recreation;  localStorage.setItem('bgt_r',  d.recreation); }
   if (d.meals!=null)      { meals       = d.meals;       localStorage.setItem('bgt_m',  JSON.stringify(d.meals)); }
   if (d.mealLibrary!=null){ mealLibrary = d.mealLibrary; localStorage.setItem('bgt_ml', JSON.stringify(d.mealLibrary)); }
+  if (d.sinkingFunds!=null){ sinkingFunds = d.sinkingFunds; localStorage.setItem('bgt_sf', JSON.stringify(d.sinkingFunds)); }
+  if (d.spending!=null)    { spending    = d.spending;    localStorage.setItem('bgt_sp', JSON.stringify(d.spending)); }
   if (d.payday!=null)     { payday      = d.payday;      localStorage.setItem('bgt_pd', d.payday); }
   if (d.savingsGoal!=null){ savingsGoal = d.savingsGoal; localStorage.setItem('bgt_sg', d.savingsGoal); }
   if (d.bufferAmt!=null)  { bufferAmt   = d.bufferAmt;   localStorage.setItem('bgt_bf', d.bufferAmt); }
+  if (d.updatedBy && d.updatedAt) {
+    const el = document.getElementById('updatedByLabel');
+    const me = _auth && _auth.currentUser ? (_auth.currentUser.displayName || _auth.currentUser.email) : null;
+    if (el && d.updatedBy !== me) {
+      const t = new Date(d.updatedAt).toLocaleTimeString('en-DE',{hour:'2-digit',minute:'2-digit'});
+      el.textContent = `Last edited by ${d.updatedBy} at ${t}`;
+    }
+  }
   nextId = Math.max(...payments.map(p => p.id), 0) + 1;
   render();
   if (activeView === 'forecast') renderForecast();
@@ -1002,8 +1125,9 @@ async function saveToCloud() {
   setSyncBadge('syncing', '⏳ Saving…');
   try {
     await setDoc(doc(_db, 'households', _familyCode, 'data', 'main'), {
-      payments, netIncome, grocery, recreation, meals, mealLibrary, payday, savingsGoal, bufferAmt,
-      updatedAt: new Date().toISOString()
+      payments, netIncome, grocery, recreation, meals, mealLibrary, sinkingFunds, spending, payday, savingsGoal, bufferAmt,
+      updatedAt: new Date().toISOString(),
+      updatedBy: _auth && _auth.currentUser ? (_auth.currentUser.displayName || _auth.currentUser.email || 'Unknown') : 'Unknown'
     });
     setSyncBadge('synced', '✅ Synced');
   } catch(e) {
@@ -1049,9 +1173,13 @@ let mealLibrary= JSON.parse(localStorage.getItem('bgt_ml')||'[]');
 let payday     = parseInt(localStorage.getItem('bgt_pd')  ||'25');
 let savingsGoal= parseFloat(localStorage.getItem('bgt_sg')||'500');
 let bufferAmt  = parseFloat(localStorage.getItem('bgt_bf')||'500');
+let sinkingFunds = JSON.parse(localStorage.getItem('bgt_sf')||'[]');
+let spending     = JSON.parse(localStorage.getItem('bgt_sp')||'{}'); // {YYYY-MM:{groceries,recreation,other}}
 let tempPayday = payday;
-let activeRange='all', activeTab='monthly', activeTag='all', activeView='overview';
+let activeRange='all', activeTab='monthly', activeTag='all', activeView='overview', searchQuery='';
 let nextId = Math.max(...payments.map(p=>p.id),0)+1;
+let spendingMonth = { year: new Date().getFullYear(), month: new Date().getMonth() };
+let isLightMode = localStorage.getItem('bgt_theme') === 'light';
 
 function save(){
   // Save locally first (instant)
@@ -1061,6 +1189,8 @@ function save(){
   localStorage.setItem('bgt_r',recreation);
   localStorage.setItem('bgt_m',JSON.stringify(meals));
   localStorage.setItem('bgt_ml',JSON.stringify(mealLibrary));
+  localStorage.setItem('bgt_sf',JSON.stringify(sinkingFunds));
+  localStorage.setItem('bgt_sp',JSON.stringify(spending));
   localStorage.setItem('bgt_pd',payday);
   localStorage.setItem('bgt_sg',savingsGoal);
   localStorage.setItem('bgt_bf',bufferAmt);
@@ -1243,12 +1373,14 @@ function renderList(monthly, up){
   const list=activeTab==='monthly'?monthly:payments.filter(p=>p.onetime);
   let filtered=(activeTab==='monthly'&&activeRange!=='all')?list.filter(p=>getRange(p.day)===activeRange):list;
   if(activeTab==='monthly'&&activeTag!=='all') filtered=filtered.filter(p=>p.tag===activeTag);
-  if(!filtered.length){container.innerHTML='<div class="empty-state"><div style="font-size:36px;margin-bottom:8px">📭</div><div>No payments here</div></div>';return;}
-  // Hint banner
-  container.innerHTML='<div style="padding:10px 16px 0"><div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 13px;font-size:12px;color:var(--muted)">💡 Tap <b style="color:var(--text)">+ Tag</b> on any payment to mark it as Essential or Optional</div></div>';
+  // Search filter
+  if(searchQuery) filtered=filtered.filter(p=>p.name.toLowerCase().includes(searchQuery)||p.cat.toLowerCase().includes(searchQuery));
+  if(!filtered.length){container.innerHTML='<div class="empty-state"><div style="font-size:36px;margin-bottom:8px">📭</div><div>'+(searchQuery?'No results for "'+searchQuery+'"':'No payments here')+'</div></div>';return;}
+  // Hint banner (only when not searching)
+  if(!searchQuery) container.innerHTML='<div style="padding:10px 16px 0"><div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 13px;font-size:12px;color:var(--muted)">💡 Tap <b style="color:var(--text)">+ Tag</b> on any payment · Swipe left to delete</div></div>';
   const upIds=new Set((up||[]).map(p=>p.id));
   const optionalTotal=filtered.filter(p=>p.tag==='optional').reduce((s,p)=>s+p.amount,0);
-  if(activeTag==='all'&&optionalTotal>0&&activeTab==='monthly'){
+  if(!searchQuery&&activeTag==='all'&&optionalTotal>0&&activeTab==='monthly'){
     container.innerHTML+=`<div style="padding:10px 16px 0"><div style="background:rgba(181,123,238,.08);border:1px solid rgba(181,123,238,.25);border-radius:10px;padding:9px 13px;font-size:12px;color:var(--purple)">✨ You could save <b>${fmt(optionalTotal)}/mo</b> by cancelling optional payments</div></div>`;
   }
   [...new Set(filtered.map(p=>p.cat))].forEach(cat=>{
@@ -1264,7 +1396,8 @@ function renderList(monthly, up){
         : p.tag==='optional'
         ? `<button class="tag-toggle tag-optional" onclick="cycleTag(${p.id})" title="Tap to change">✨ Optional</button>`
         : `<button class="tag-toggle tag-none" onclick="cycleTag(${p.id})" title="Tap to tag">+ Tag</button>`;
-      div.innerHTML=`<div class="pd ${catDot(cat)}"></div>
+      div.innerHTML=`<div class="swipe-delete-bg">Delete</div>
+        <div class="pd ${catDot(cat)}"></div>
         <div class="pi">
           <div class="pi-name">${p.name}${p.onetime?'<span class="badge b-onetime">1×</span>':''}${upIds.has(p.id)?'<span class="badge b-due">Due</span>':''}</div>
           <div class="pi-meta">${p.onetime?(p.onetimeDate||''):'Ends: '+p.endDate}</div>
@@ -1274,6 +1407,7 @@ function renderList(monthly, up){
         ${tagBtn}
         <button class="delete-btn" onclick="deletePayment(${p.id})">×</button>`;
       sec.appendChild(div);
+      attachSwipeDelete(div, p.id);
     });
     container.appendChild(sec);
   });
@@ -1293,7 +1427,7 @@ function buildForecast(){
 
 function renderForecast(){
   const data=buildForecast();
-  drawBarChart(data); drawTrendChart(data); drawDonut(data[0]); renderMonthCards(data);
+  drawBarChart(data); drawTrendChart(data); drawDonut(data[0]); renderMonthCards(data); renderActualChart();
 }
 
 function drawBarChart(data){
@@ -1905,6 +2039,274 @@ function toggleIngredient(key, mealType, ingIndex) {
     renderMeals();
   }
 }
+// ════════ DARK / LIGHT MODE ════════
+function toggleTheme() {
+  isLightMode = !isLightMode;
+  document.body.classList.toggle('light-mode', isLightMode);
+  document.getElementById('themeBtn').textContent = isLightMode ? '🌙' : '☀️';
+  localStorage.setItem('bgt_theme', isLightMode ? 'light' : 'dark');
+}
+
+// ════════ SEARCH ════════
+function filterSearch(q) {
+  searchQuery = q.trim().toLowerCase();
+  document.getElementById('searchClearBtn').style.display = q ? 'block' : 'none';
+  render();
+  if(activeView==='list') document.querySelector('.view.active')?.scrollIntoView({behavior:'smooth'});
+}
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  filterSearch('');
+}
+
+// ════════ SWIPE TO DELETE ════════
+function attachSwipeDelete(el, id) {
+  let startX = 0, dx = 0;
+  const bg = el.querySelector('.swipe-delete-bg');
+  el.addEventListener('touchstart', e => { startX = e.touches[0].clientX; dx = 0; }, {passive:true});
+  el.addEventListener('touchmove', e => {
+    dx = e.touches[0].clientX - startX;
+    if(dx < -10) {
+      const pct = Math.min(1, Math.abs(dx)/80);
+      if(bg){ bg.style.opacity = pct; }
+      el.style.transform = `translateX(${Math.max(-80, dx)}px)`;
+    }
+  }, {passive:true});
+  el.addEventListener('touchend', () => {
+    if(dx < -60) {
+      el.style.transition = 'transform .2s';
+      el.style.transform = 'translateX(-100%)';
+      setTimeout(() => deletePayment(id), 200);
+    } else {
+      el.style.transition = 'transform .2s';
+      el.style.transform = '';
+      if(bg) bg.style.opacity = 0;
+    }
+  });
+}
+
+// ════════ SPENDING TRACKER ════════
+function spendingKey(y, m) { return `${y}-${String(m+1).padStart(2,'0')}`; }
+function changeSpendingMonth(dir) {
+  spendingMonth.month += dir;
+  if(spendingMonth.month > 11){ spendingMonth.month=0; spendingMonth.year++; }
+  if(spendingMonth.month < 0) { spendingMonth.month=11; spendingMonth.year--; }
+  renderSpending();
+}
+function renderSpending() {
+  const {year, month} = spendingMonth;
+  const key = spendingKey(year, month);
+  const d = spending[key] || {};
+  const label = new Date(year, month, 1).toLocaleDateString('en-DE',{month:'long',year:'numeric'});
+  document.getElementById('spendingMonthLabel').textContent = label;
+  const fixed = payments.filter(p=>!p.onetime).reduce((s,p)=>s+p.amount,0);
+  const cats = [
+    {id:'groceries', label:'Groceries',  budget: grocery},
+    {id:'recreation',label:'Recreation', budget: recreation},
+    {id:'fixed',     label:'Fixed costs',budget: fixed},
+    {id:'other',     label:'Other',      budget: 0},
+  ];
+  const rows = document.getElementById('spendingRows');
+  rows.innerHTML = cats.map(c => {
+    const actual = d[c.id] ?? '';
+    const diff = actual !== '' ? (parseFloat(actual)||0) - c.budget : null;
+    const diffStr = diff === null ? '—' : (diff > 0 ? '+'+fmt(diff) : fmt(diff));
+    const diffClass = diff === null ? '' : diff > 0 ? 'over' : 'under';
+    return `<div class="spending-row">
+      <span class="spending-label">${c.label}</span>
+      <span class="spending-est">${c.budget>0?fmt(c.budget):'—'}</span>
+      <input class="spending-actual-input" type="number" step="0.01" placeholder="0"
+        value="${actual}" id="sp_${c.id}" data-key="${key}" data-cat="${c.id}">
+      <span class="spending-diff ${diffClass}">${diffStr}</span>
+    </div>`;
+  }).join('');
+}
+function saveSpending() {
+  const {year, month} = spendingMonth;
+  const key = spendingKey(year, month);
+  if(!spending[key]) spending[key] = {};
+  ['groceries','recreation','fixed','other'].forEach(cat => {
+    const el = document.getElementById('sp_'+cat);
+    if(el && el.value !== '') spending[key][cat] = parseFloat(el.value)||0;
+  });
+  save();
+  renderSpending();
+  renderActualChart();
+  alert('Spending saved ✅');
+}
+function renderActualChart() {
+  const canvas = document.getElementById('actualChart');
+  if(!canvas) return;
+  const dpr = window.devicePixelRatio||1, W = canvas.parentElement.clientWidth, H = 160;
+  canvas.width=W*dpr; canvas.height=H*dpr; canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const now = new Date();
+  const key = spendingKey(now.getFullYear(), now.getMonth());
+  const d = spending[key]||{};
+  const fixed = payments.filter(p=>!p.onetime).reduce((s,p)=>s+p.amount,0);
+  const cats = [
+    {label:'Groceries', budget:grocery,    actual:d.groceries||0,  color:'#f5a623'},
+    {label:'Recreation',budget:recreation, actual:d.recreation||0, color:'#38bdf8'},
+    {label:'Fixed',     budget:fixed,      actual:d.fixed||0,      color:'#7c6fef'},
+    {label:'Other',     budget:0,          actual:d.other||0,      color:'#7a7a90'},
+  ];
+  const maxV = Math.max(...cats.map(c=>Math.max(c.budget,c.actual)), 100) * 1.15;
+  const pad={top:12,bottom:30,left:8,right:8};
+  const cW=W-pad.left-pad.right, cH=H-pad.top-pad.bottom;
+  const gW=cW/cats.length, bW=Math.min(gW*.3,22);
+  const baseY=pad.top+cH;
+  cats.forEach((c,i)=>{
+    const cx=pad.left+i*gW+gW/2;
+    // Budget bar
+    const bH=(c.budget/maxV)*cH;
+    ctx.fillStyle='rgba(124,111,239,.3)';
+    ctx.beginPath();ctx.roundRect(cx-bW-2,baseY-bH,bW,bH,[3,3,0,0]);ctx.fill();
+    // Actual bar
+    const aH=(c.actual/maxV)*cH;
+    ctx.fillStyle=c.actual>c.budget?'rgba(255,78,78,.8)':'rgba(200,240,68,.8)';
+    ctx.beginPath();ctx.roundRect(cx+2,baseY-aH,bW,aH,[3,3,0,0]);ctx.fill();
+    // Label
+    ctx.fillStyle='#7a7a90';ctx.font='9px DM Sans';ctx.textAlign='center';
+    ctx.fillText(c.label,cx,H-pad.bottom+12);
+  });
+}
+
+// ════════ SINKING FUNDS ════════
+function renderSinkingFunds() {
+  const container = document.getElementById('sinkingFundsList');
+  if(!sinkingFunds.length) {
+    container.innerHTML='<div style="padding:8px 16px;font-size:12px;color:var(--muted)">No sinking funds yet. Tap + Fund to create one.</div>';
+    return;
+  }
+  container.innerHTML = sinkingFunds.map((f,i)=>{
+    const pct = f.goal>0 ? Math.min(100,(f.saved/f.goal)*100) : 0;
+    return `<div class="fund-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div class="fund-name">${f.name}</div>
+          <div class="fund-meta">${fmt(f.monthly)}/mo target · ${fmt(f.saved)} saved of ${fmt(f.goal)}</div>
+        </div>
+        <button onclick="deleteFund(${i})" style="background:none;border:none;color:var(--muted);font-size:17px;cursor:pointer;">×</button>
+      </div>
+      <div class="fund-bar"><div class="fund-bar-fill" style="width:${pct.toFixed(1)}%"></div></div>
+      <div class="fund-pct">${pct.toFixed(0)}% of goal · ${fmt(f.goal-f.saved)} remaining</div>
+      <div class="fund-actions">
+        <button class="fund-action-btn primary" onclick="addToFund(${i})">+ Add savings</button>
+        <button class="fund-action-btn" onclick="resetFund(${i})">Reset</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openFundModal() {
+  document.getElementById('fundName').value='';
+  document.getElementById('fundMonthly').value='';
+  document.getElementById('fundGoal').value='';
+  document.getElementById('fundModalOverlay').classList.add('open');
+}
+function saveFund() {
+  const name=document.getElementById('fundName').value.trim();
+  const monthly=parseFloat(document.getElementById('fundMonthly').value)||0;
+  const goal=parseFloat(document.getElementById('fundGoal').value)||0;
+  if(!name){alert('Please enter a fund name.');return;}
+  sinkingFunds.push({name,monthly,goal,saved:0});
+  save(); document.getElementById('fundModalOverlay').classList.remove('open'); renderSinkingFunds();
+}
+function deleteFund(i) {
+  if(!confirm('Delete "'+sinkingFunds[i].name+'"?')) return;
+  sinkingFunds.splice(i,1); save(); renderSinkingFunds();
+}
+function addToFund(i) {
+  const amt=parseFloat(prompt('How much to add to "'+sinkingFunds[i].name+'"? (€)'));
+  if(isNaN(amt)||amt<=0) return;
+  sinkingFunds[i].saved=(sinkingFunds[i].saved||0)+amt;
+  save(); renderSinkingFunds();
+}
+function resetFund(i) {
+  if(!confirm('Reset savings for "'+sinkingFunds[i].name+'" to zero?')) return;
+  sinkingFunds[i].saved=0; save(); renderSinkingFunds();
+}
+
+// ════════ NOTIFICATIONS ════════
+async function requestNotifPermission() {
+  if(!('Notification' in window)){alert('Notifications not supported in this browser.');return;}
+  const perm = await Notification.requestPermission();
+  const btn = document.getElementById('notifBtn');
+  if(perm==='granted'){
+    btn.textContent='🔔✅';
+    btn.title='Notifications enabled';
+    localStorage.setItem('bgt_notif','1');
+    scheduleNotifications();
+    alert('Notifications enabled! You\'ll be reminded about payday and due payments.');
+  } else {
+    btn.textContent='🔕';
+    btn.title='Notifications blocked';
+  }
+}
+function scheduleNotifications() {
+  if(Notification.permission!=='granted') return;
+  const now = new Date();
+  const todayDay = now.getDate();
+  // Due today
+  const dueToday = payments.filter(p=>!p.onetime && p.day===todayDay);
+  if(dueToday.length) {
+    new Notification('💶 Budget — payments due today', {
+      body: dueToday.map(p=>p.name+' '+fmt(p.amount)).join(', '),
+      icon: '💶'
+    });
+  }
+  // Payday tomorrow
+  const tomorrow = new Date(now); tomorrow.setDate(now.getDate()+1);
+  if(tomorrow.getDate()===payday) {
+    new Notification('🎉 Payday tomorrow!', {
+      body: 'Your salary arrives tomorrow. Remaining this month: '+fmt(netIncome-payments.filter(p=>!p.onetime).reduce((s,p)=>s+p.amount,0)-grocery-recreation),
+      icon: '💶'
+    });
+  }
+  // Shopping reminder — missing ingredients tomorrow
+  const tmKey = offsetDateKey(1);
+  const missing = getMissingIngredients([tmKey]);
+  if(missing.length) {
+    new Notification('🛒 Shopping reminder', {
+      body: missing.length+' ingredients needed tomorrow: '+missing.slice(0,3).map(x=>x.name).join(', ')+(missing.length>3?'…':''),
+      icon: '🛒'
+    });
+  }
+}
+
+// ════════ WHATSAPP SHOPPING ════════
+function shareShoppingListWhatsApp() {
+  const keys=[todayKey(), offsetDateKey(1), offsetDateKey(2)];
+  const all = getAllIngredients(keys);
+  const missing = all.filter(x=>!x.have);
+  if(!missing.length){alert('No missing ingredients to share!');return;}
+  const lines = missing.map(x=>`• ${x.name} (${x.dayLabel})`).join('\n');
+  const text = encodeURIComponent(`🛒 Shopping list:\n${lines}`);
+  window.open(`https://wa.me/?text=${text}`,'_blank');
+}
+
+// ════════ COPY WEEK TO NEXT ════════
+function copyWeekToNext() {
+  const now = new Date();
+  // Find the start of current week (Monday)
+  const day = now.getDay() || 7;
+  const monday = new Date(now); monday.setDate(now.getDate() - day + 1);
+  let copied = 0;
+  for(let d=0; d<7; d++) {
+    const from = new Date(monday); from.setDate(monday.getDate()+d);
+    const to   = new Date(monday); to.setDate(monday.getDate()+d+7);
+    const fromKey = dateKey(from.getFullYear(), from.getMonth(), from.getDate());
+    const toKey   = dateKey(to.getFullYear(),   to.getMonth(),   to.getDate());
+    if(meals[fromKey]) {
+      meals[toKey] = JSON.parse(JSON.stringify(meals[fromKey]));
+      copied++;
+    }
+  }
+  if(copied===0){alert('No meals planned this week to copy.');return;}
+  save();
+  renderMealsCalendar();
+  alert(`✅ Copied ${copied} days to next week!`);
+}
+
 window.switchMealsTab    = switchMealsTab;
 window.changeCalMonth    = changeCalMonth;
 window.toggleDayCard     = toggleDayCard;
@@ -1938,9 +2340,21 @@ window.closeOnBg      = closeOnBg;
 window.addPayment     = addPayment;
 window.deletePayment  = deletePayment;
 window.cycleTag         = cycleTag;
-window.toggleCycleCard  = toggleCycleCard;
-window.toggleCycleGroup = toggleCycleGroup;
-window.hardRefresh      = hardRefresh;
+window.toggleCycleCard   = toggleCycleCard;
+window.toggleTheme       = toggleTheme;
+window.filterSearch      = filterSearch;
+window.clearSearch       = clearSearch;
+window.changeSpendingMonth = changeSpendingMonth;
+window.saveSpending      = saveSpending;
+window.openFundModal     = openFundModal;
+window.saveFund          = saveFund;
+window.deleteFund        = deleteFund;
+window.addToFund         = addToFund;
+window.resetFund         = resetFund;
+window.requestNotifPermission = requestNotifPermission;
+window.shareShoppingListWhatsApp = shareShoppingListWhatsApp;
+window.copyWeekToNext    = copyWeekToNext;
+window.hardRefresh       = hardRefresh;
 window.copyExport       = copyExport;
 window.toggleBD       = toggleBD;
 
@@ -1991,7 +2405,13 @@ document.getElementById('incomeInput').value=netIncome;
 document.getElementById('groceryInput').value=grocery;
 document.getElementById('savingsInput').value=savingsGoal;
 document.getElementById('bufferInput').value=bufferAmt||'';
+// Apply theme
+if(isLightMode){ document.body.classList.add('light-mode'); document.getElementById('themeBtn').textContent='☀️'; }
+// Notification button state
+if(typeof Notification!=='undefined' && Notification.permission==='granted'){ document.getElementById('notifBtn').textContent='🔔✅'; scheduleNotifications(); }
 render();
+renderSpending();
+renderSinkingFunds();
 window.addEventListener('resize',()=>{if(activeView==='forecast')renderForecast();});
 </script>
 </body>
