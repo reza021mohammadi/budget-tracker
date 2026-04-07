@@ -40,6 +40,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .summary-card.c-income::before{background:var(--green);}
 .summary-card.c-grocery::before{background:var(--orange);}
 .summary-card.c-recreation::before{background:var(--teal);}
+.summary-card.c-clothes::before{background:var(--purple);}
+.summary-card.c-restaurant::before{background:#f472b6;}
+.summary-card.c-other2::before{background:var(--muted);}
 .summary-card.c-costs::before{background:var(--danger);}
 .summary-card.c-remaining::before{background:var(--accent);}
 .summary-card.c-savings::before{background:var(--purple);}
@@ -50,6 +53,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .card-value.cv-income{color:var(--green);}
 .card-value.cv-grocery{color:var(--orange);}
 .card-value.cv-recreation{color:var(--teal);}
+.card-value.cv-clothes{color:var(--purple);}
+.card-value.cv-restaurant{color:#f472b6;}
+.card-value.cv-other2{color:var(--muted);}
 .card-value.cv-costs{color:var(--danger);}
 .card-value.cv-remaining{color:var(--accent);}
 .card-value.cv-savings{color:var(--purple);}
@@ -533,9 +539,36 @@ canvas{width:100%!important;display:block;}
         <button onclick="updateField('recreation')">Save</button>
       </div>
     </div>
+    <!-- Clothes -->
+    <div class="summary-card c-clothes">
+      <div class="card-label">👗 Clothes</div>
+      <div class="card-value cv-clothes" id="clothesDisplay">€0</div>
+      <div class="edit-row">
+        <input type="number" id="clothesInput" placeholder="100">
+        <button onclick="updateField('clothes')">Save</button>
+      </div>
+    </div>
+    <!-- Restaurant -->
+    <div class="summary-card c-restaurant">
+      <div class="card-label">🍽 Restaurant/Cafe</div>
+      <div class="card-value cv-restaurant" id="restaurantDisplay">€0</div>
+      <div class="edit-row">
+        <input type="number" id="restaurantInput" placeholder="150">
+        <button onclick="updateField('restaurant')">Save</button>
+      </div>
+    </div>
+    <!-- Other -->
+    <div class="summary-card c-other2">
+      <div class="card-label">📦 Other</div>
+      <div class="card-value cv-other2" id="other2Display">€0</div>
+      <div class="edit-row">
+        <input type="number" id="other2Input" placeholder="100">
+        <button onclick="updateField('other2')">Save</button>
+      </div>
+    </div>
     <!-- Total costs -->
     <div class="summary-card c-costs full-width">
-      <div class="card-label">Total Costs (fixed + groceries)</div>
+      <div class="card-label">Total Costs (fixed + variable)</div>
       <div class="card-value cv-costs" id="totalCosts">€0</div>
       <div class="card-sub" id="costBreakdown"></div>
       <div class="progress-bar"><div class="progress-fill pf-costs" id="costFill" style="width:0%"></div></div>
@@ -1019,6 +1052,9 @@ function applyCloudData(d) {
   if (d.netIncome!=null)  { netIncome   = d.netIncome;   localStorage.setItem('bgt_i',  d.netIncome); }
   if (d.grocery!=null)    { grocery     = d.grocery;     localStorage.setItem('bgt_g',  d.grocery); }
   if (d.recreation!=null) { recreation  = d.recreation;  localStorage.setItem('bgt_r',  d.recreation); }
+  if (d.clothes!=null)    { clothes     = d.clothes;     localStorage.setItem('bgt_cl', d.clothes); }
+  if (d.restaurant!=null) { restaurant  = d.restaurant;  localStorage.setItem('bgt_rs', d.restaurant); }
+  if (d.other2!=null)     { other2      = d.other2;      localStorage.setItem('bgt_ot', d.other2); }
   if (d.meals!=null)      { meals       = d.meals;       localStorage.setItem('bgt_m',  JSON.stringify(d.meals)); }
   if (d.mealLibrary!=null){ mealLibrary = d.mealLibrary; localStorage.setItem('bgt_ml', JSON.stringify(d.mealLibrary)); }
   if (d.sinkingFunds!=null){ sinkingFunds = d.sinkingFunds; localStorage.setItem('bgt_sf', JSON.stringify(d.sinkingFunds)); }
@@ -1138,7 +1174,7 @@ async function saveToCloud() {
   setSyncBadge('syncing', '⏳ Saving…');
   try {
     await setDoc(doc(_db, 'households', _familyCode, 'data', 'main'), {
-      payments, netIncome, grocery, recreation, meals, mealLibrary, sinkingFunds, spending, customCategories, payday, savingsGoal, bufferAmt,
+      payments, netIncome, grocery, recreation, clothes, restaurant, other2, meals, mealLibrary, sinkingFunds, spending, customCategories, payday, savingsGoal, bufferAmt,
       updatedAt: new Date().toISOString(),
       updatedBy: _auth && _auth.currentUser ? (_auth.currentUser.displayName || _auth.currentUser.email || 'Unknown') : 'Unknown'
     });
@@ -1181,6 +1217,9 @@ let payments   = JSON.parse(localStorage.getItem('bgt_p')||'null') || JSON.parse
 let netIncome  = parseFloat(localStorage.getItem('bgt_i') ||'3828');
 let grocery    = parseFloat(localStorage.getItem('bgt_g') ||'300');
 let recreation = parseFloat(localStorage.getItem('bgt_r') ||'0');
+let clothes    = parseFloat(localStorage.getItem('bgt_cl')||'0');
+let restaurant = parseFloat(localStorage.getItem('bgt_rs')||'0');
+let other2     = parseFloat(localStorage.getItem('bgt_ot')||'0');
 let meals      = JSON.parse(localStorage.getItem('bgt_m') ||'{}');
 let mealLibrary= JSON.parse(localStorage.getItem('bgt_ml')||'[]');
 let payday     = parseInt(localStorage.getItem('bgt_pd')  ||'25');
@@ -1201,6 +1240,9 @@ function save(){
   localStorage.setItem('bgt_i',netIncome);
   localStorage.setItem('bgt_g',grocery);
   localStorage.setItem('bgt_r',recreation);
+  localStorage.setItem('bgt_cl',clothes);
+  localStorage.setItem('bgt_rs',restaurant);
+  localStorage.setItem('bgt_ot',other2);
   localStorage.setItem('bgt_m',JSON.stringify(meals));
   localStorage.setItem('bgt_ml',JSON.stringify(mealLibrary));
   localStorage.setItem('bgt_sf',JSON.stringify(sinkingFunds));
@@ -1256,7 +1298,7 @@ function isActiveInMonth(p,y,m){
   const e=parseEndDate(p.endDate);
   return !e || e>=new Date(y,m,1);
 }
-function costsForMonth(y,m){ return payments.filter(p=>isActiveInMonth(p,y,m)).reduce((s,p)=>s+p.amount,0)+grocery+recreation; }
+function costsForMonth(y,m){ return payments.filter(p=>isActiveInMonth(p,y,m)).reduce((s,p)=>s+p.amount,0)+grocery+recreation+clothes+restaurant+other2; }
 function fixedCostsForMonth(y,m){ return payments.filter(p=>isActiveInMonth(p,y,m)).reduce((s,p)=>s+p.amount,0); }
 function nextOcc(day){ const n=today(),d=new Date(n.getFullYear(),n.getMonth(),day); if(d<=n) d.setMonth(d.getMonth()+1); return d; }
 function daysUntil(dt){ const n=today(); return Math.ceil((dt-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/864e5); }
@@ -1296,7 +1338,7 @@ function switchView(v,el){
 function render(){
   const now=today(), monthly=payments.filter(p=>!p.onetime);
   const fixed=monthly.reduce((s,p)=>s+p.amount,0);
-  const total=fixed+grocery+recreation;
+  const total=fixed+grocery+recreation+clothes+restaurant+other2;
   const rem=netIncome-total;
   const pct=Math.min(100,(total/netIncome)*100);
 
@@ -1306,15 +1348,21 @@ function render(){
   document.getElementById('incomeDisplay').textContent=fmt(netIncome);
   document.getElementById('groceryDisplay').textContent=fmt(grocery);
   document.getElementById('recreationDisplay').textContent=fmt(recreation);
+  document.getElementById('clothesDisplay').textContent=fmt(clothes);
+  document.getElementById('restaurantDisplay').textContent=fmt(restaurant);
+  document.getElementById('other2Display').textContent=fmt(other2);
   document.getElementById('incomeInput').value=netIncome;
   document.getElementById('groceryInput').value=grocery;
   document.getElementById('recreationInput').value=recreation;
+  document.getElementById('clothesInput').value=clothes;
+  document.getElementById('restaurantInput').value=restaurant;
+  document.getElementById('other2Input').value=other2;
   document.getElementById('savingsInput').value=savingsGoal;
   document.getElementById('bufferInput').value=bufferAmt||'';
 
   // Total costs
   document.getElementById('totalCosts').textContent=fmt(total);
-  document.getElementById('costBreakdown').textContent=`Fixed ${fmt(fixed)} + Groceries ${fmt(grocery)} + Recreation ${fmt(recreation)}`;
+  document.getElementById('costBreakdown').textContent=`Fixed ${fmt(fixed)} + Groceries ${fmt(grocery)} + Recreation ${fmt(recreation)} + Clothes ${fmt(clothes)} + Restaurant ${fmt(restaurant)} + Other ${fmt(other2)}`;
   document.getElementById('costFill').style.width=pct+'%';
   document.getElementById('costPct').textContent=pct.toFixed(1)+'% of net income';
 
@@ -1447,8 +1495,8 @@ function buildForecast(){
     const d=new Date(now.getFullYear(),now.getMonth()+i,1);
     const y=d.getFullYear(),m=d.getMonth();
     const fixed=fixedCostsForMonth(y,m);
-    const total=fixed+grocery+recreation;
-    return{year:y,month:m,label:d.toLocaleDateString('en-DE',{month:'short',year:'numeric'}),short:d.toLocaleDateString('en-DE',{month:'short'}),fixed,grocery,recreation,total,net:netIncome-total,isCurrent:i===0,payments:payments.filter(p=>!p.onetime).map(p=>({...p,active:isActiveInMonth(p,y,m)}))};
+    const total=fixed+grocery+recreation+clothes+restaurant+other2;
+    return{year:y,month:m,label:d.toLocaleDateString('en-DE',{month:'short',year:'numeric'}),short:d.toLocaleDateString('en-DE',{month:'short'}),fixed,grocery,recreation,clothes,restaurant,other2,total,net:netIncome-total,isCurrent:i===0,payments:payments.filter(p=>!p.onetime).map(p=>({...p,active:isActiveInMonth(p,y,m)}))};
   });
 }
 
@@ -1541,6 +1589,9 @@ function drawDonut(d){
     {label:'Home',      color:'#3ecf8e', val:payments.filter(p=>!p.onetime&&p.cat==='home').reduce((s,p)=>s+p.amount,0)},
     {label:'Grocery',   color:'#f5a623', val:grocery},
     {label:'Recreation',color:'#38bdf8', val:recreation},
+    {label:'Clothes',   color:'#b57bee', val:clothes},
+    {label:'Restaurant',color:'#f472b6', val:restaurant},
+    {label:'Other',     color:'#7a7a90', val:other2},
   ];
   const custom=customCategories.map(c=>({
     label:c.label, color:c.color,
@@ -1617,7 +1668,7 @@ function renderMonthCards(data){
       <div class="mc-header" onclick="toggleBD(this)">
         <div class="mc-left"><div class="mc-dot"></div>
           <div><div class="mc-name">${d.label} ${d.isCurrent?'<span class="mc-now">NOW</span>':''} ${isHeavy?'<span class="mc-heavy">Heavy</span>':''}</div>
-          <div style="font-size:10px;color:var(--muted)">Fixed ${fmt(d.fixed)} + Groceries ${fmt(d.grocery)}</div></div>
+          <div style="font-size:10px;color:var(--muted)">Fixed ${fmt(d.fixed)} + Groceries ${fmt(d.grocery)} + Recreation ${fmt(d.recreation)}</div></div>
         </div>
         <div class="mc-right"><div class="mc-net ${d.net>=0?'pos':'neg'}">${d.net<0?'−':''}${fmt(d.net)}</div><div class="mc-sub">remaining</div></div>
       </div>
@@ -1636,11 +1687,11 @@ function toggleBD(h){ h.closest('.month-card').querySelector('.mc-breakdown').cl
 function renderExport(){
   const now=today(), monthly=payments.filter(p=>!p.onetime);
   const fixed=monthly.reduce((s,p)=>s+p.amount,0);
-  const total=fixed+grocery;
+  const total=fixed+grocery+recreation+clothes+restaurant+other2;
   const data=buildForecast();
   let out=`BUDGET EXPORT — ${now.toLocaleDateString('en-DE',{day:'numeric',month:'long',year:'numeric'})}\n`;
   out+=`${'─'.repeat(48)}\n`;
-  out+=`Net Income:   ${fmt(netIncome)}\nGroceries:    ${fmt(grocery)}\nFixed Costs:  ${fmt(fixed)}\nTotal Costs:  ${fmt(total)}\nRemaining:    ${fmt(netIncome-total)}\nSavings Goal: ${fmt(savingsGoal)}\n\n`;
+  out+=`Net Income:      ${fmt(netIncome)}\nGroceries:       ${fmt(grocery)}\nRecreation:      ${fmt(recreation)}\nClothes:         ${fmt(clothes)}\nRestaurant/Cafe: ${fmt(restaurant)}\nOther:           ${fmt(other2)}\nFixed Costs:     ${fmt(fixed)}\nTotal Costs:     ${fmt(total)}\nRemaining:       ${fmt(netIncome-total)}\nSavings Goal:    ${fmt(savingsGoal)}\n\n`;
   out+=`PAYMENTS (${monthly.length} recurring)\n${'─'.repeat(48)}\n`;
   monthly.sort((a,b)=>a.day-b.day).forEach(p=>{ out+=`Day ${String(p.day).padStart(2,' ')}  ${p.name.padEnd(28,' ')} ${fmt(p.amount)}${p.tag?' ['+p.tag+']':''}\n`; });
   out+=`\n6-MONTH FORECAST\n${'─'.repeat(48)}\n`;
@@ -1657,6 +1708,9 @@ function updateField(f){
   if(f==='income'){const v=parseFloat(document.getElementById('incomeInput').value);if(!isNaN(v)&&v>0)netIncome=v;}
   if(f==='grocery'){const v=parseFloat(document.getElementById('groceryInput').value);if(!isNaN(v)&&v>=0)grocery=v;}
   if(f==='recreation'){const v=parseFloat(document.getElementById('recreationInput').value);if(!isNaN(v)&&v>=0)recreation=v;}
+  if(f==='clothes'){const v=parseFloat(document.getElementById('clothesInput').value);if(!isNaN(v)&&v>=0)clothes=v;}
+  if(f==='restaurant'){const v=parseFloat(document.getElementById('restaurantInput').value);if(!isNaN(v)&&v>=0)restaurant=v;}
+  if(f==='other2'){const v=parseFloat(document.getElementById('other2Input').value);if(!isNaN(v)&&v>=0)other2=v;}
   if(f==='savings'){const v=parseFloat(document.getElementById('savingsInput').value);if(!isNaN(v)&&v>=0)savingsGoal=v;}
   if(f==='buffer'){const v=parseFloat(document.getElementById('bufferInput').value);if(!isNaN(v)&&v>=0)bufferAmt=v;}
   save(); render(); if(activeView==='forecast') renderForecast();
@@ -2289,10 +2343,13 @@ function renderSpending() {
   document.getElementById('spendingMonthLabel').textContent = label;
   const fixed = payments.filter(p=>!p.onetime).reduce((s,p)=>s+p.amount,0);
   const cats = [
-    {id:'groceries', label:'Groceries',  budget: grocery},
-    {id:'recreation',label:'Recreation', budget: recreation},
-    {id:'fixed',     label:'Fixed costs',budget: fixed},
-    {id:'other',     label:'Other',      budget: 0},
+    {id:'groceries',  label:'Groceries',       budget: grocery},
+    {id:'recreation', label:'Recreation',       budget: recreation},
+    {id:'clothes',    label:'Clothes',          budget: clothes},
+    {id:'restaurant', label:'Restaurant/Cafe',  budget: restaurant},
+    {id:'other2',     label:'Other',            budget: other2},
+    {id:'fixed',      label:'Fixed costs',      budget: fixed},
+    {id:'extra',      label:'Extra',            budget: 0},
   ];
   const rows = document.getElementById('spendingRows');
   rows.innerHTML = cats.map(c => {
@@ -2313,7 +2370,7 @@ function saveSpending() {
   const {year, month} = spendingMonth;
   const key = spendingKey(year, month);
   if(!spending[key]) spending[key] = {};
-  ['groceries','recreation','fixed','other'].forEach(cat => {
+  ['groceries','recreation','clothes','restaurant','other2','fixed','extra'].forEach(cat => {
     const el = document.getElementById('sp_'+cat);
     if(el && el.value !== '') spending[key][cat] = parseFloat(el.value)||0;
   });
@@ -2333,10 +2390,12 @@ function renderActualChart() {
   const d = spending[key]||{};
   const fixed = payments.filter(p=>!p.onetime).reduce((s,p)=>s+p.amount,0);
   const cats = [
-    {label:'Groceries', budget:grocery,    actual:d.groceries||0,  color:'#f5a623'},
-    {label:'Recreation',budget:recreation, actual:d.recreation||0, color:'#38bdf8'},
-    {label:'Fixed',     budget:fixed,      actual:d.fixed||0,      color:'#7c6fef'},
-    {label:'Other',     budget:0,          actual:d.other||0,      color:'#7a7a90'},
+    {label:'Grocery',   budget:grocery,     actual:d.groceries||0,   color:'#f5a623'},
+    {label:'Recreation',budget:recreation,  actual:d.recreation||0,  color:'#38bdf8'},
+    {label:'Clothes',   budget:clothes,     actual:d.clothes||0,     color:'#b57bee'},
+    {label:'Restaurant',budget:restaurant,  actual:d.restaurant||0,  color:'#f472b6'},
+    {label:'Other',     budget:other2,      actual:d.other2||0,      color:'#7a7a90'},
+    {label:'Fixed',     budget:fixed,       actual:d.fixed||0,       color:'#7c6fef'},
   ];
   const maxV = Math.max(...cats.map(c=>Math.max(c.budget,c.actual)), 100) * 1.15;
   const pad={top:12,bottom:30,left:8,right:8};
@@ -2446,7 +2505,7 @@ function scheduleNotifications() {
   const tomorrow = new Date(now); tomorrow.setDate(now.getDate()+1);
   if(tomorrow.getDate()===payday) {
     new Notification('🎉 Payday tomorrow!', {
-      body: 'Your salary arrives tomorrow. Remaining this month: '+fmt(netIncome-payments.filter(p=>!p.onetime).reduce((s,p)=>s+p.amount,0)-grocery-recreation),
+      body: 'Your salary arrives tomorrow. Remaining this month: '+fmt(netIncome-payments.filter(p=>!p.onetime).reduce((s,p)=>s+p.amount,0)-grocery-recreation-clothes-restaurant-other2),
       icon: '💶'
     });
   }
@@ -2597,6 +2656,10 @@ document.getElementById('joinHouseholdBtn').addEventListener('click', async () =
 // INIT — render from localStorage FIRST so page is never blank
 document.getElementById('incomeInput').value=netIncome;
 document.getElementById('groceryInput').value=grocery;
+document.getElementById('recreationInput').value=recreation;
+document.getElementById('clothesInput').value=clothes;
+document.getElementById('restaurantInput').value=restaurant;
+document.getElementById('other2Input').value=other2;
 document.getElementById('savingsInput').value=savingsGoal;
 document.getElementById('bufferInput').value=bufferAmt||'';
 // Apply theme
