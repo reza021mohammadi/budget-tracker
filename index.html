@@ -268,7 +268,8 @@ canvas{width:100%!important;display:block;}
 .family-code-display{font-family:monospace;font-size:28px;font-weight:700;letter-spacing:6px;color:var(--accent);text-align:center;padding:14px;background:rgba(200,240,68,.06);border:1px solid rgba(200,240,68,.2);border-radius:12px;margin:8px 0;}
 .family-or{text-align:center;color:var(--muted);font-size:12px;margin:6px 0;}
 .family-status{font-size:12px;text-align:center;min-height:18px;margin-top:4px;}
-.family-code-badge{display:none;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:5px 9px;font-size:11px;color:var(--muted);font-weight:600;}
+.family-code-badge{display:none;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:5px 9px;font-size:11px;color:var(--muted);font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.family-code-badge:active{background:rgba(255,78,78,.15);border-color:rgba(255,78,78,.3);color:var(--danger);}
 
 /* EXPORT sheet */
 .export-sheet{background:var(--surface2);border-radius:11px;padding:14px;font-size:12px;color:var(--muted);margin-top:10px;white-space:pre;overflow-x:auto;line-height:1.7;}
@@ -331,7 +332,7 @@ canvas{width:100%!important;display:block;}
   <div class="header-top">
     <div class="header-title">💶 Budget</div>
     <div class="header-actions">
-      <div id="familyCodeBadge" class="family-code-badge"></div>
+      <button id="familyCodeBadge" class="family-code-badge" style="display:none;" title="Tap to leave household"></button>
       <div id="syncBadge" class="sync-badge">⏳ Connecting…</div>
       <div class="payday-btn" onclick="openPaydayModal()">📅 Payday <span id="paydayDisplay">25</span></div>
       <div class="export-btn" onclick="switchView('export',document.querySelector('[data-v=export]'))" title="Export">📤</div>
