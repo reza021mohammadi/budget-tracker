@@ -51,6 +51,13 @@ function daysUntil(day){
   return Math.ceil((d-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/864e5);
 }
 
+// Auto-refresh when user opens the widget from home screen
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible') {
+    window.location.reload(true);
+  }
+});
+
 onAuthStateChanged(auth, async user=>{
   if(!user){ document.getElementById('widget').innerHTML='<div class="loading">Please sign in to the main app first.</div><a class="open-btn" href="index.html">Open Budget App</a>'; return; }
 
