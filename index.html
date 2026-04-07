@@ -292,8 +292,21 @@ canvas{width:100%!important;display:block;}
 
 /* ── MEALS PLANNER ── */
 .meals-sub-tabs{display:flex;gap:0;margin:10px 16px 0;background:var(--surface);border-radius:10px;border:1px solid var(--border);padding:3px;}
-.meals-stab{flex:1;text-align:center;font-size:12px;font-weight:600;padding:7px 4px;border-radius:8px;color:var(--muted);cursor:pointer;transition:all .2s;}
+.meals-stab{flex:1;text-align:center;font-size:11px;font-weight:600;padding:7px 4px;border-radius:8px;color:var(--muted);cursor:pointer;transition:all .2s;}
 .meals-stab.active{background:var(--surface2);color:var(--accent2);border:1px solid rgba(124,111,239,.4);}
+/* Meals library list */
+.lib-item{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:12px 14px;margin:0 16px 8px;}
+.lib-item-info{flex:1;min-width:0;}
+.lib-item-name{font-size:14px;font-weight:600;color:var(--text);}
+.lib-item-ings{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lib-del-btn{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:7px;flex-shrink:0;}
+.lib-del-btn:active{color:var(--danger);}
+.lib-add-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--surface);border:1px dashed var(--border);border-radius:13px;padding:14px;margin:0 16px 8px;cursor:pointer;font-size:13px;color:var(--muted);font-family:'DM Sans',sans-serif;width:calc(100% - 32px);}
+/* Meal name dropdown in modal */
+.meal-name-select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:12px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a7a90' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px;margin-bottom:8px;}
+.meal-name-select:focus{border-color:var(--accent2);}
+.meal-name-manual{display:none;}
+.meal-name-manual.show{display:block;}
 .meals-view{display:none;padding:0 0 16px;}
 .meals-view.active{display:block;}
 .meals-section-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;font-weight:600;padding:12px 16px 6px;}
@@ -591,6 +604,7 @@ canvas{width:100%!important;display:block;}
   <div class="meals-sub-tabs">
     <div class="meals-stab active" onclick="switchMealsTab('overview',this)">Next 3 days</div>
     <div class="meals-stab" onclick="switchMealsTab('calendar',this)">Calendar</div>
+    <div class="meals-stab" onclick="switchMealsTab('library',this)">Meals List</div>
   </div>
 
   <!-- Next 3 days -->
@@ -616,6 +630,13 @@ canvas{width:100%!important;display:block;}
     </div>
     <div id="calDays"></div>
   </div>
+
+  <!-- Meals Library -->
+  <div class="meals-view" id="meals-library">
+    <div class="meals-section-label">Your saved meals</div>
+    <div id="mealsLibraryList"></div>
+    <button class="lib-add-btn" onclick="openLibraryModal()">+ Add to Meals List</button>
+  </div>
 </div>
 
 <button class="fab" onclick="openModal()">+</button>
@@ -636,7 +657,13 @@ canvas{width:100%!important;display:block;}
     </div>
     <div class="form-group">
       <label class="form-label">Meal name</label>
-      <input class="form-input" id="mealNameInput" type="text" placeholder="e.g. Greek salad">
+      <select class="meal-name-select" id="mealNameSelect" onchange="onMealSelectChange(this)">
+        <option value="">— Choose from list —</option>
+        <option value="__new__">✏️ New (type manually)</option>
+      </select>
+      <div class="meal-name-manual" id="mealNameManualWrap">
+        <input class="form-input" id="mealNameInput" type="text" placeholder="Type meal name…">
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">Ingredients</label>
@@ -645,6 +672,25 @@ canvas{width:100%!important;display:block;}
     </div>
     <button class="btn-submit" onclick="saveMeal()">Save Meal</button>
     <button class="btn-cancel" onclick="closeMealModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- ══ LIBRARY MODAL (add to Meals List) ══ -->
+<div class="modal-overlay" id="libraryModalOverlay" onclick="closeOnBg(event,'libraryModalOverlay')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add to Meals List</div>
+    <div class="form-group">
+      <label class="form-label">Meal name</label>
+      <input class="form-input" id="libMealName" type="text" placeholder="e.g. Spaghetti Carbonara">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Ingredients</label>
+      <div id="libIngList"></div>
+      <button class="add-ing-btn" onclick="addLibIngInput()">+ Add ingredient</button>
+    </div>
+    <button class="btn-submit" onclick="saveLibraryMeal()">Save to List</button>
+    <button class="btn-cancel" onclick="closeLibraryModal()">Cancel</button>
   </div>
 </div>
 
@@ -845,6 +891,7 @@ function applyCloudData(d) {
   if (d.grocery!=null)    { grocery     = d.grocery;     localStorage.setItem('bgt_g',  d.grocery); }
   if (d.recreation!=null) { recreation  = d.recreation;  localStorage.setItem('bgt_r',  d.recreation); }
   if (d.meals!=null)      { meals       = d.meals;       localStorage.setItem('bgt_m',  JSON.stringify(d.meals)); }
+  if (d.mealLibrary!=null){ mealLibrary = d.mealLibrary; localStorage.setItem('bgt_ml', JSON.stringify(d.mealLibrary)); }
   if (d.payday!=null)     { payday      = d.payday;      localStorage.setItem('bgt_pd', d.payday); }
   if (d.savingsGoal!=null){ savingsGoal = d.savingsGoal; localStorage.setItem('bgt_sg', d.savingsGoal); }
   if (d.bufferAmt!=null)  { bufferAmt   = d.bufferAmt;   localStorage.setItem('bgt_bf', d.bufferAmt); }
@@ -951,7 +998,7 @@ async function saveToCloud() {
   setSyncBadge('syncing', '⏳ Saving…');
   try {
     await setDoc(doc(_db, 'households', _familyCode, 'data', 'main'), {
-      payments, netIncome, grocery, recreation, meals, payday, savingsGoal, bufferAmt,
+      payments, netIncome, grocery, recreation, meals, mealLibrary, payday, savingsGoal, bufferAmt,
       updatedAt: new Date().toISOString()
     });
     setSyncBadge('synced', '✅ Synced');
@@ -994,6 +1041,7 @@ let netIncome  = parseFloat(localStorage.getItem('bgt_i') ||'3828');
 let grocery    = parseFloat(localStorage.getItem('bgt_g') ||'300');
 let recreation = parseFloat(localStorage.getItem('bgt_r') ||'0');
 let meals      = JSON.parse(localStorage.getItem('bgt_m') ||'{}');
+let mealLibrary= JSON.parse(localStorage.getItem('bgt_ml')||'[]');
 let payday     = parseInt(localStorage.getItem('bgt_pd')  ||'25');
 let savingsGoal= parseFloat(localStorage.getItem('bgt_sg')||'500');
 let bufferAmt  = parseFloat(localStorage.getItem('bgt_bf')||'500');
@@ -1008,6 +1056,7 @@ function save(){
   localStorage.setItem('bgt_g',grocery);
   localStorage.setItem('bgt_r',recreation);
   localStorage.setItem('bgt_m',JSON.stringify(meals));
+  localStorage.setItem('bgt_ml',JSON.stringify(mealLibrary));
   localStorage.setItem('bgt_pd',payday);
   localStorage.setItem('bgt_sg',savingsGoal);
   localStorage.setItem('bgt_bf',bufferAmt);
@@ -1075,6 +1124,8 @@ function switchView(v,el){
   document.getElementById('view-'+v).classList.add('active');
   document.querySelectorAll('.nav-tab').forEach(x=>x.classList.remove('active'));
   if(el) el.classList.add('active');
+  // Hide FAB on meals tab
+  document.querySelector('.fab').style.display = v==='meals' ? 'none' : 'flex';
   if(v==='forecast') renderForecast();
   if(v==='export')   renderExport();
   if(v==='meals')    renderMeals();
@@ -1498,11 +1549,114 @@ function switchMealsTab(tab, el) {
   document.getElementById('meals-'+tab).classList.add('active');
   if(tab==='overview') renderMealsOverview();
   if(tab==='calendar') renderMealsCalendar();
+  if(tab==='library')  renderMealsLibrary();
 }
 
 function renderMeals() {
   if(activeMealsTab==='overview') renderMealsOverview();
-  else renderMealsCalendar();
+  else if(activeMealsTab==='calendar') renderMealsCalendar();
+  else if(activeMealsTab==='library') renderMealsLibrary();
+}
+
+// ── Meals Library ──
+function renderMealsLibrary() {
+  const container=document.getElementById('mealsLibraryList');
+  if(mealLibrary.length===0){
+    container.innerHTML='<div style="padding:16px;text-align:center;font-size:13px;color:var(--muted)">No meals saved yet.<br>Tap below to add your first meal.</div>';
+    return;
+  }
+  container.innerHTML=mealLibrary.map((m,i)=>`
+    <div class="lib-item">
+      <div class="lib-item-info">
+        <div class="lib-item-name">${m.name}</div>
+        <div class="lib-item-ings">${m.ingredients.length>0?m.ingredients.map(x=>x.name).join(', '):'No ingredients'}</div>
+      </div>
+      <button class="lib-del-btn" onclick="deleteLibraryMeal(${i})">×</button>
+    </div>`).join('');
+}
+
+let libIngredients=[];
+function openLibraryModal() {
+  libIngredients=[];
+  document.getElementById('libMealName').value='';
+  document.getElementById('libIngList').innerHTML='';
+  document.getElementById('libraryModalOverlay').classList.add('open');
+}
+function closeLibraryModal() {
+  document.getElementById('libraryModalOverlay').classList.remove('open');
+}
+function addLibIngInput(name='',have=false) {
+  libIngredients.push({name,have});
+  renderLibIngInputs();
+}
+function renderLibIngInputs() {
+  document.getElementById('libIngList').innerHTML=libIngredients.map((ing,i)=>`
+    <div class="ing-input-row">
+      <input type="text" placeholder="Ingredient" value="${ing.name}" oninput="libIngredients[${i}].name=this.value">
+      <button class="ing-have-toggle ${ing.have?'have':''}" onclick="libIngredients[${i}].have=!libIngredients[${i}].have;renderLibIngInputs()">
+        ${ing.have?'✅ Have':'🛒 Buy'}
+      </button>
+      <button class="ing-del" onclick="libIngredients.splice(${i},1);renderLibIngInputs()">×</button>
+    </div>`).join('');
+}
+function saveLibraryMeal() {
+  const name=document.getElementById('libMealName').value.trim();
+  if(!name){alert('Please enter a meal name.');return;}
+  mealLibrary.push({name, ingredients:libIngredients.filter(i=>i.name.trim()).map(i=>({name:i.name.trim(),have:i.have}))});
+  save();
+  closeLibraryModal();
+  renderMealsLibrary();
+}
+function deleteLibraryMeal(i) {
+  if(!confirm('Remove "'+mealLibrary[i].name+'" from Meals List?')) return;
+  mealLibrary.splice(i,1);
+  save();
+  renderMealsLibrary();
+}
+
+// ── Populate meal name dropdown from library ──
+function populateMealDropdown(existingName='') {
+  const sel=document.getElementById('mealNameSelect');
+  sel.innerHTML='<option value="">— Choose from list —</option>';
+  mealLibrary.forEach((m,i)=>{
+    const opt=document.createElement('option');
+    opt.value=i;
+    opt.textContent=m.name;
+    if(m.name===existingName) opt.selected=true;
+    sel.appendChild(opt);
+  });
+  const newOpt=document.createElement('option');
+  newOpt.value='__new__';
+  newOpt.textContent='✏️ New (type manually)';
+  sel.appendChild(newOpt);
+  // Show manual field if existing name not in library
+  const inLibrary=mealLibrary.some(m=>m.name===existingName);
+  if(existingName && !inLibrary){
+    sel.value='__new__';
+    document.getElementById('mealNameManualWrap').classList.add('show');
+    document.getElementById('mealNameInput').value=existingName;
+  } else {
+    document.getElementById('mealNameManualWrap').classList.remove('show');
+  }
+}
+
+function onMealSelectChange(sel) {
+  const manualWrap=document.getElementById('mealNameManualWrap');
+  if(sel.value==='__new__'){
+    manualWrap.classList.add('show');
+    document.getElementById('mealNameInput').value='';
+    modalIngredients=[];
+    renderIngInputs();
+  } else if(sel.value===''){
+    manualWrap.classList.remove('show');
+    modalIngredients=[];
+    renderIngInputs();
+  } else {
+    manualWrap.classList.remove('show');
+    // Pre-fill ingredients from library
+    const lib=mealLibrary[parseInt(sel.value)];
+    if(lib) { modalIngredients=lib.ingredients.map(i=>({...i})); renderIngInputs(); }
+  }
 }
 
 function renderMealsOverview() {
@@ -1627,13 +1781,9 @@ function openMealModal(key, type='breakfast') {
   mealModalType=type;
   modalIngredients=[];
   document.getElementById('mealModalDate').textContent=fmtDateLabel(key);
-  document.getElementById('mealNameInput').value='';
-  // Pre-fill name if editing
   const existing=(meals[key]||{})[type];
-  if(existing){
-    document.getElementById('mealNameInput').value=existing.name;
-    modalIngredients=existing.ingredients.map(i=>({...i}));
-  }
+  populateMealDropdown(existing?existing.name:'');
+  if(existing) { modalIngredients=existing.ingredients.map(i=>({...i})); }
   document.querySelectorAll('.mts-btn').forEach(b=>b.classList.remove('selected'));
   document.querySelectorAll('.mts-btn').forEach(b=>{if(b.textContent.toLowerCase().includes(type))b.classList.add('selected');});
   renderIngInputs();
@@ -1646,15 +1796,9 @@ function selectMealType(type, btn) {
   mealModalType=type;
   document.querySelectorAll('.mts-btn').forEach(b=>b.classList.remove('selected'));
   btn.classList.add('selected');
-  // Load existing meal if any
   const existing=(meals[mealModalDate]||{})[type];
-  if(existing){
-    document.getElementById('mealNameInput').value=existing.name;
-    modalIngredients=existing.ingredients.map(i=>({...i}));
-  } else {
-    document.getElementById('mealNameInput').value='';
-    modalIngredients=[];
-  }
+  populateMealDropdown(existing?existing.name:'');
+  modalIngredients=existing?existing.ingredients.map(i=>({...i})):[];
   renderIngInputs();
 }
 function addIngredientInput(name='', have=false) {
@@ -1675,8 +1819,14 @@ function renderIngInputs() {
     </div>`).join('');
 }
 function saveMeal() {
-  const name=document.getElementById('mealNameInput').value.trim();
-  if(!name){alert('Please enter a meal name.');return;}
+  const sel=document.getElementById('mealNameSelect');
+  let name='';
+  if(sel.value==='__new__'){
+    name=document.getElementById('mealNameInput').value.trim();
+  } else if(sel.value!==''){
+    name=mealLibrary[parseInt(sel.value)].name;
+  }
+  if(!name){alert('Please select or enter a meal name.');return;}
   if(!meals[mealModalDate]) meals[mealModalDate]={};
   meals[mealModalDate][mealModalType]={
     name,
@@ -1713,6 +1863,13 @@ window.renderIngInputs   = renderIngInputs;
 window.saveMeal          = saveMeal;
 window.deleteMeal        = deleteMeal;
 window.toggleIngredient  = toggleIngredient;
+window.onMealSelectChange= onMealSelectChange;
+window.openLibraryModal  = openLibraryModal;
+window.closeLibraryModal = closeLibraryModal;
+window.addLibIngInput    = addLibIngInput;
+window.renderLibIngInputs= renderLibIngInputs;
+window.saveLibraryMeal   = saveLibraryMeal;
+window.deleteLibraryMeal = deleteLibraryMeal;
 window.switchView     = switchView;
 window.openPaydayModal= openPaydayModal;
 window.savePayday     = savePayday;
