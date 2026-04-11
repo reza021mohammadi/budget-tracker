@@ -589,7 +589,34 @@ canvas{width:100%!important;display:block;}
     <!-- Remaining -->
     <div class="summary-card c-remaining full-width">
       <div class="card-label">Remaining This Month</div>
-      <div class="card-value cv-remaining" id="remaining">€0</div>
+      <!-- Planned row -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-size:11px;color:var(--muted)">Planned</div>
+          <div style="font-size:10px;color:var(--muted);opacity:.6;margin-top:2px">income − budgeted costs</div>
+        </div>
+        <div style="text-align:right">
+          <div class="card-value cv-remaining" id="remaining" style="font-size:22px">€0</div>
+          <div id="remainingPct" style="font-size:10px;margin-top:3px"></div>
+        </div>
+      </div>
+      <!-- Actual row -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;">
+        <div>
+          <div style="font-size:11px;color:var(--muted)">Actual</div>
+          <div style="font-size:10px;color:var(--muted);opacity:.6;margin-top:2px">income − real spending</div>
+        </div>
+        <div style="text-align:right">
+          <div id="remainingActual" style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--muted)">—</div>
+          <div id="remainingActualPct" style="font-size:10px;margin-top:3px"></div>
+        </div>
+      </div>
+      <!-- Difference -->
+      <div id="remainingDiff" style="display:none;border-top:1px solid var(--border);padding-top:8px;margin-top:2px;display:flex;align-items:center;justify-content:space-between;">
+        <span id="remainingDiffLabel" style="font-size:10px;color:var(--muted);flex:1;padding-right:8px"></span>
+        <span id="remainingDiffVal" style="font-size:12px;font-weight:700"></span>
+      </div>
+      <!-- Payday countdown -->
       <div class="payday-countdown">
         <div><div class="pc-label">Next payday</div><div class="pc-value" id="paydayDate">—</div></div>
         <div style="text-align:right"><div class="pc-label">Days away</div><div class="pc-value" id="daysToPayday">—</div></div>
@@ -1431,8 +1458,47 @@ function render(){
   document.getElementById('costFill').style.width=pct+'%';
   document.getElementById('costPct').textContent=pct.toFixed(1)+'% of net income';
 
-  // Remaining
+  // Remaining — planned
   document.getElementById('remaining').textContent=(rem<0?'−':'')+fmt(rem);
+  document.getElementById('remainingPct').innerHTML=netIncome>0
+    ?`<span style="background:rgba(200,240,68,.1);color:var(--accent);border:1px solid rgba(200,240,68,.2);border-radius:99px;padding:2px 7px">${((rem/netIncome)*100).toFixed(0)}% of income</span>`:'';
+
+  // Remaining — actual (from spending tracker for this month)
+  const spKey = budgetKey(budgetMonth.year, budgetMonth.month);
+  const sp = spending[spKey] || {};
+  const hasActual = Object.keys(sp).length > 0;
+  const actualSpent = (sp.groceries||0)+(sp.recreation||0)+(sp.clothes||0)+(sp.restaurant||0)+(sp.other2||0)+(sp.fixed||0)+(sp.extra||0);
+  const actualRem = netIncome - actualSpent;
+  const diff = actualRem - rem; // positive = under budget (good), negative = over budget (bad)
+
+  const raEl  = document.getElementById('remainingActual');
+  const raPct = document.getElementById('remainingActualPct');
+  const rdEl  = document.getElementById('remainingDiff');
+  const rdLbl = document.getElementById('remainingDiffLabel');
+  const rdVal = document.getElementById('remainingDiffVal');
+
+  if(hasActual) {
+    const isOver = actualRem < rem;
+    const color  = isOver ? 'var(--danger)' : 'var(--green)';
+    const bgc    = isOver ? 'rgba(255,78,78,.1)' : 'rgba(62,207,142,.1)';
+    const bdc    = isOver ? 'rgba(255,78,78,.25)' : 'rgba(62,207,142,.25)';
+    raEl.textContent  = (actualRem<0?'−':'')+fmt(actualRem);
+    raEl.style.color  = color;
+    raPct.innerHTML   = netIncome>0
+      ? `<span style="background:${bgc};color:${color};border:1px solid ${bdc};border-radius:99px;padding:2px 7px">${((actualRem/netIncome)*100).toFixed(0)}% of income</span>` : '';
+    rdEl.style.display = 'flex';
+    rdLbl.textContent  = isOver
+      ? `Spent ${fmt(Math.abs(diff))} more than planned`
+      : `Saved ${fmt(Math.abs(diff))} more than planned`;
+    rdVal.textContent  = (isOver?'−':'+') + fmt(Math.abs(diff));
+    rdVal.style.color  = color;
+  } else {
+    raEl.textContent   = 'Not entered yet';
+    raEl.style.color   = 'var(--muted)';
+    raEl.style.fontSize = '14px';
+    raPct.innerHTML    = `<span style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:99px;padding:2px 7px;font-size:9px">→ enter in Spending tab</span>`;
+    rdEl.style.display = 'none';
+  }
 
   // Buffer warning
   const bw=document.getElementById('bufferWarning');
