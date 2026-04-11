@@ -95,14 +95,28 @@ onAuthStateChanged(auth, async user=>{
     .slice(0,3);
 
   document.getElementById('widget').innerHTML=`
-    <div class="label">Remaining this month</div>
+    <div class="label">Planned remaining</div>
     <div class="value">${remaining<0?'−':''}${fmt(remaining)}</div>
-    <div class="sub">of ${fmt(netIncome)} · ${((total/netIncome)*100).toFixed(0)}% used</div>
+    <div class="sub">of ${fmt(netIncome)} · ${((total/netIncome)*100).toFixed(0)}% used (budgeted)</div>
+    <div class="divider"></div>
+    ${(() => {
+      const sp = (d.spending||{})[key]||{};
+      const hasActual = Object.keys(sp).length > 0;
+      if(!hasActual) return `<div class="label">Actual remaining</div><div style="font-size:14px;color:#7a7a90;margin-bottom:4px">Not entered yet</div>`;
+      const actualSpent=(sp.groceries||0)+(sp.recreation||0)+(sp.clothes||0)+(sp.restaurant||0)+(sp.other2||0)+(sp.fixed||0)+(sp.extra||0);
+      const actualRem=netIncome-actualSpent;
+      const isOver=actualRem<remaining;
+      const color=isOver?'#ff4e4e':'#3ecf8e';
+      const diff=Math.abs(actualRem-remaining);
+      return `<div class="label">Actual remaining</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:32px;color:${color};margin:4px 0 2px">${actualRem<0?'−':''}${fmt(actualRem)}</div>
+        <div style="font-size:11px;color:${color};opacity:.7">${isOver?'Spent '+fmt(diff)+' more than planned':'Saved '+fmt(diff)+' more than planned'}</div>`;
+    })()}
     <div class="divider"></div>
     <div class="next-label">Next payments</div>
     ${upcoming.map(p=>`<div class="payment-row"><div class="pay-dot"></div><span class="pay-name">${p.name}</span><span class="pay-day">${p.d===0?'Today':p.d===1?'Tmrw':'Day '+p.day}</span><span class="pay-amount">${fmt(p.amount)}</span></div>`).join('')}
     <div class="divider"></div>
-    <div class="label">Next payday <span class="payday-badge">${daysLeft===0?'Today 🎉':daysLeft+' days'}</span></div>
+    <div class="label">Next payday <span class="payday-badge">${daysLeft===0?'Today':''+daysLeft+' days'}</span></div>
     <a class="open-btn" href="index.html">Open Full Budget App</a>
     <button onclick="window.location.reload(true)" style="display:block;width:100%;margin-top:10px;padding:12px;background:none;border:1px solid #2e2e3e;border-radius:12px;color:#7a7a90;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;">↻ Refresh</button>
   `;
