@@ -50,6 +50,19 @@ function daysUntil(day){
   if(d<=n) d.setMonth(d.getMonth()+1);
   return Math.ceil((d-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/864e5);
 }
+function parseDMY(s){
+  if(!s||s==='ongoing'||s.includes(' ')||s.includes('&')) return null;
+  const p=s.split(/[./]/);
+  return p.length===3?new Date(+p[2],+p[1]-1,+p[0]):null;
+}
+function isActiveInMonth(p,y,m){
+  if(p.onetime) return false;
+  const monthEnd=new Date(y,m+1,0);
+  const s=parseDMY(p.startDate);
+  if(s&&s>monthEnd) return false;
+  const e=parseDMY(p.endDate);
+  return !e || e>=new Date(y,m,1);
+}
 
 // Auto-refresh when user opens the widget from home screen
 document.addEventListener('visibilitychange', () => {
@@ -82,7 +95,8 @@ onAuthStateChanged(auth, async user=>{
   const other2        = b.other2     || d.other2     || 0;
   const payday        = d.payday     || 25;
   const monthly       = payments.filter(p=>!p.onetime);
-  const fixed         = monthly.reduce((s,p)=>s+p.amount,0);
+  const activeMonthly = monthly.filter(p=>isActiveInMonth(p,now.getFullYear(),now.getMonth()));
+  const fixed         = activeMonthly.reduce((s,p)=>s+p.amount,0);
   const total         = fixed+grocery+recreation+clothes+restaurant+other2;
   const remaining     = netIncome-total;
   const daysLeft   = daysUntil(payday);
@@ -90,7 +104,12 @@ onAuthStateChanged(auth, async user=>{
   // Next 3 payments
   const upcoming = monthly
     .map(p=>({...p,d:daysUntil(p.day)}))
-    .filter(p=>p.d>=0&&p.d<=14)
+    .filter(p=>{
+      if(p.d<0||p.d>14) return false;
+      const occ=new Date(now.getFullYear(),now.getMonth(),p.day);
+      if(occ<=now) occ.setMonth(occ.getMonth()+1);
+      return isActiveInMonth(p,occ.getFullYear(),occ.getMonth());
+    })
     .sort((a,b)=>a.d-b.d)
     .slice(0,3);
 
