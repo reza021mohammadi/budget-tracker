@@ -946,6 +946,7 @@ canvas{width:100%!important;display:block;}
     </div>
     <div class="form-group"><label class="form-label">Note (optional)</label><textarea class="form-textarea" id="fNote" placeholder="e.g. shared with partner, cancel if needed…"></textarea></div>
     <div class="form-group"><label class="checkbox-row"><input type="checkbox" id="fOnetime"><span class="checkbox-label">🔴 One-time payment (not monthly)</span></label></div>
+    <div class="form-group"><label class="checkbox-row"><input type="checkbox" id="fDebt"><span class="checkbox-label">💳 Count as debt (include in debt payoff timeline)</span></label></div>
     <button class="btn-submit" id="paymentSubmitBtn" onclick="addPayment()">Add Payment</button>
     <button class="btn-cancel" onclick="closeModal()">Cancel</button>
   </div>
@@ -1695,8 +1696,16 @@ function drawDebtChart(){
   if(!canvas) return;
   const card=document.getElementById('debtCard');
   const now=today();
-  const installments=payments.filter(p=>!p.onetime && parseEndDate(p.endDate));
-  if(installments.length===0){ if(card) card.style.display='none'; return; }
+  const installments=payments.filter(p=>p.isDebt && !p.onetime && parseEndDate(p.endDate));
+  if(installments.length===0){
+    if(card){
+      card.style.display='';
+      const cv=document.getElementById('debtChart');
+      if(cv){ const ctx=cv.getContext('2d'); cv.width=cv.width; }
+      document.getElementById('debtNote').textContent='No debt marked yet — edit a payment and tick "💳 Count as debt" to include it here.';
+    }
+    return;
+  }
   if(card) card.style.display='';
   const months=18;
   const data=[];
@@ -1992,6 +2001,7 @@ function closeModal(){
   document.getElementById('modalOverlay').classList.remove('open');
   ['fName','fAmount','fDay','fStartDate','fEndDate','fNote','newCategoryInput'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fOnetime').checked=false;
+  document.getElementById('fDebt').checked=false;
   document.getElementById('fTag').value='';
   document.getElementById('newCategoryWrap').style.display='none';
   document.getElementById('fCategory').value='sub';
@@ -2067,6 +2077,7 @@ function openEditModal(id){
   document.getElementById('fEndDate').value=dmyToIso(p.endDate);
   document.getElementById('fNote').value=p.note||'';
   document.getElementById('fOnetime').checked=!!p.onetime;
+  document.getElementById('fDebt').checked=!!p.isDebt;
   document.getElementById('modalOverlay').classList.add('open');
 }
 window.openEditModal=openEditModal;
@@ -2080,6 +2091,7 @@ function addPayment(){
   const endDate=document.getElementById('fEndDate').value;
   const note=document.getElementById('fNote').value.trim();
   const onetime=document.getElementById('fOnetime').checked;
+  const isDebt=document.getElementById('fDebt').checked;
   if(!name||isNaN(amount)||amount<=0){alert('Please enter a name and amount.');return;}
   if(!onetime&&(isNaN(day)||day<1||day>31)){alert('Please enter a valid day (1–31).');return;}
   // Handle new custom category
@@ -2097,7 +2109,7 @@ function addPayment(){
       cat=newId;
     }
   }
-  const payload={name,amount,day:onetime?1:day,cat,tag,note,onetime,
+  const payload={name,amount,day:onetime?1:day,cat,tag,note,onetime,isDebt,
     startDate:startDate?new Date(startDate).toLocaleDateString('en-GB'):'',
     endDate:endDate?new Date(endDate).toLocaleDateString('en-GB'):'ongoing',
     onetimeDate:endDate?new Date(endDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''};
