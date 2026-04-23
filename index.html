@@ -1935,7 +1935,7 @@ function renderMonthCards(data){
     const card=document.createElement('div');
     card.className='month-card'+(d.isCurrent?' current-month':'');
     card.innerHTML=`
-      <div class="mc-header" onclick="toggleBD(this)">
+      <div class="mc-header">
         <div class="mc-left"><div class="mc-dot"></div>
           <div><div class="mc-name">${d.label} ${d.isCurrent?'<span class="mc-now">NOW</span>':''} ${isHeavy?'<span class="mc-heavy">Heavy</span>':''}</div>
           <div style="font-size:10px;color:var(--muted)">Fixed ${fmt(d.fixed)} + Groceries ${fmt(d.grocery)} + Recreation ${fmt(d.recreation)}</div></div>
@@ -1946,8 +1946,13 @@ function renderMonthCards(data){
       <div class="mc-breakdown">
         ${d.payments.map(p=>`<div class="bdr ${p.active?'':'expired'}"><div class="bdr-left"><div class="bdr-dot ${catDot(p.cat)}"></div>${p.name}${!p.active?' <span style="font-size:9px;color:var(--muted)">(ends)</span>':''}</div><div class="bdr-amt">${p.active?fmt(p.amount):'—'}</div></div>`).join('')}
         <div class="bdr"><div class="bdr-left"><div class="bdr-dot dot-grocery"></div>Groceries</div><div class="bdr-saving">${fmt(d.grocery)}</div></div>
-        <span class="collapse-btn" onclick="event.stopPropagation();this.closest('.mc-breakdown').classList.remove('open')">↑ Collapse</span>
+        <button class="collapse-btn" type="button">↑ Collapse</button>
       </div>`;
+    const header=card.querySelector('.mc-header');
+    const breakdown=card.querySelector('.mc-breakdown');
+    header.addEventListener('click',()=>breakdown.classList.toggle('open'));
+    const collapseBtn=card.querySelector('.collapse-btn');
+    if(collapseBtn) collapseBtn.addEventListener('click',e=>{e.stopPropagation();breakdown.classList.remove('open');});
     container.appendChild(card);
   });
 }
