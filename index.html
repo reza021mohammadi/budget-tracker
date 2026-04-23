@@ -1430,7 +1430,8 @@ function switchView(v,el){
 function render(){
   syncBudgetVars();
   const now=today(), monthly=payments.filter(p=>!p.onetime);
-  const fixed=monthly.reduce((s,p)=>s+p.amount,0);
+  const activeMonthly=monthly.filter(p=>isActiveInMonth(p,budgetMonth.year,budgetMonth.month));
+  const fixed=activeMonthly.reduce((s,p)=>s+p.amount,0);
   const total=fixed+grocery+recreation+clothes+restaurant+other2;
   const rem=netIncome-total;
   const pct=Math.min(100,(total/netIncome)*100);
@@ -1529,7 +1530,9 @@ function render(){
   // Pay cycle: from today to next payday — same structure as forecast month cards
   const cycleEnd=nextOcc(payday);
   const cycleItems=monthly.filter(p=>{
-    const nx=nextOcc(p.day); return nx<=cycleEnd;
+    const nx=nextOcc(p.day);
+    if(nx>cycleEnd) return false;
+    return isActiveInMonth(p,nx.getFullYear(),nx.getMonth());
   }).sort((a,b)=>daysUntil(nextOcc(a.day))-daysUntil(nextOcc(b.day)));
   const cycleTotal=cycleItems.reduce((s,p)=>s+p.amount,0);
   document.getElementById('cycleTotal').textContent=fmt(cycleTotal);
@@ -1561,7 +1564,7 @@ function render(){
 
   // Range pills
   const rt={'1':0,'2':0,'3':0,'4':0};
-  monthly.forEach(p=>{rt[getRange(p.day)]=(rt[getRange(p.day)]||0)+p.amount;});
+  activeMonthly.forEach(p=>{rt[getRange(p.day)]=(rt[getRange(p.day)]||0)+p.amount;});
   document.getElementById('range-all').textContent=fmt(fixed);
   ['1','2','3','4'].forEach(r=>document.getElementById('range-'+r).textContent=fmt(rt[r]||0));
 
