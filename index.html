@@ -1689,7 +1689,9 @@ function buildForecast(){
 
 function renderForecast(){
   const data=buildForecast();
-  drawBarChart(data); drawTrendChart(data); drawDebtChart(); drawDonut(data[0]); renderMonthCards(data); renderActualChart();
+  drawBarChart(data); drawTrendChart(data);
+  try { drawDebtChart(); } catch(e) { console.error('drawDebtChart failed:',e); }
+  drawDonut(data[0]); renderMonthCards(data); renderActualChart();
 }
 function drawDebtChart(){
   const canvas=document.getElementById('debtChart');
