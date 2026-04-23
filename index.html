@@ -921,7 +921,10 @@ canvas{width:100%!important;display:block;}
         </select>
       </div>
     </div>
-    <div class="form-group"><label class="form-label">End Date (optional)</label><input class="form-input" id="fEndDate" type="date"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Start Date (optional)</label><input class="form-input" id="fStartDate" type="date"></div>
+      <div class="form-group"><label class="form-label">End Date (optional)</label><input class="form-input" id="fEndDate" type="date"></div>
+    </div>
     <div class="form-group"><label class="form-label">Note (optional)</label><textarea class="form-textarea" id="fNote" placeholder="e.g. shared with partner, cancel if needed…"></textarea></div>
     <div class="form-group"><label class="checkbox-row"><input type="checkbox" id="fOnetime"><span class="checkbox-label">🔴 One-time payment (not monthly)</span></label></div>
     <button class="btn-submit" onclick="addPayment()">Add Payment</button>
@@ -1376,11 +1379,14 @@ window.hardRefresh = hardRefresh;
 function today(){ return new Date(); }
 function parseEndDate(s){
   if(!s||s==='ongoing'||s.includes(' ')||s.includes('&')) return null;
-  const p=s.split('.');
+  const p=s.split(/[./]/);
   return p.length===3?new Date(+p[2],+p[1]-1,+p[0]):null;
 }
 function isActiveInMonth(p,y,m){
   if(p.onetime) return false;
+  const monthEnd=new Date(y,m+1,0);
+  const s=parseEndDate(p.startDate);
+  if(s&&s>monthEnd) return false;
   const e=parseEndDate(p.endDate);
   return !e || e>=new Date(y,m,1);
 }
@@ -1870,7 +1876,7 @@ function openModal(){
 }
 function closeModal(){
   document.getElementById('modalOverlay').classList.remove('open');
-  ['fName','fAmount','fDay','fEndDate','fNote','newCategoryInput'].forEach(id=>document.getElementById(id).value='');
+  ['fName','fAmount','fDay','fStartDate','fEndDate','fNote','newCategoryInput'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fOnetime').checked=false;
   document.getElementById('fTag').value='';
   document.getElementById('newCategoryWrap').style.display='none';
@@ -1911,6 +1917,7 @@ function addPayment(){
   const day=parseInt(document.getElementById('fDay').value);
   let cat=document.getElementById('fCategory').value;
   const tag=document.getElementById('fTag').value;
+  const startDate=document.getElementById('fStartDate').value;
   const endDate=document.getElementById('fEndDate').value;
   const note=document.getElementById('fNote').value.trim();
   const onetime=document.getElementById('fOnetime').checked;
@@ -1932,6 +1939,7 @@ function addPayment(){
     }
   }
   payments.push({id:nextId++,name,amount,day:onetime?1:day,cat,tag,note,onetime,
+    startDate:startDate?new Date(startDate).toLocaleDateString('en-GB'):'',
     endDate:endDate?new Date(endDate).toLocaleDateString('en-GB'):'ongoing',
     onetimeDate:endDate?new Date(endDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''});
   save();closeModal();render();if(activeView==='forecast')renderForecast();
