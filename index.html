@@ -173,6 +173,11 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .delete-btn:active{background:rgba(255,78,78,.15);color:var(--danger);}
 .tag-toggle{flex-shrink:0;height:28px;padding:0 8px;border-radius:99px;border:none;cursor:pointer;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:all .15s;white-space:nowrap;}
 .tag-toggle:active{transform:scale(.88);}
+.paid-btn{flex-shrink:0;width:26px;height:26px;border-radius:99px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:13px;color:var(--muted);display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;}
+.paid-btn:active{transform:scale(.88);}
+.paid-btn.paid{background:var(--green);color:var(--bg);border-color:var(--green);}
+.payment-item.is-paid .pi-name{text-decoration:line-through;opacity:.55;}
+.payment-item.is-paid .pr-amount{opacity:.55;}
 .tag-none{background:var(--surface2);color:var(--muted);border:1px dashed var(--border);}
 .tag-essential{background:rgba(62,207,142,.12);border:1px solid rgba(62,207,142,.3);color:var(--green);}
 .tag-optional{background:rgba(181,123,238,.12);border:1px solid rgba(181,123,238,.3);color:var(--purple);}
@@ -585,6 +590,13 @@ canvas{width:100%!important;display:block;}
       <div class="card-sub" id="costBreakdown"></div>
       <div class="progress-bar"><div class="progress-fill pf-costs" id="costFill" style="width:0%"></div></div>
       <div class="progress-label" id="costPct"></div>
+      <div id="stillOwedRow" style="display:none;border-top:1px solid var(--border);margin-top:10px;padding-top:8px;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:11px;color:var(--muted)">Still owed this month</div>
+          <div id="stillOwedMeta" style="font-size:10px;color:var(--muted);opacity:.6;margin-top:2px"></div>
+        </div>
+        <div id="stillOwedVal" style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--orange)">€0</div>
+      </div>
     </div>
     <!-- Remaining -->
     <div class="summary-card c-remaining full-width">
@@ -710,6 +722,13 @@ canvas{width:100%!important;display:block;}
       <div class="chart-title">Cost Trend (as installments expire)</div>
       <canvas id="trendChart" height="140"></canvas>
       <div class="progress-label" style="margin-top:6px" id="trendNote"></div>
+    </div>
+
+    <!-- Debt payoff timeline -->
+    <div class="chart-card" id="debtCard">
+      <div class="chart-title">Debt Payoff Timeline</div>
+      <canvas id="debtChart" height="140"></canvas>
+      <div class="progress-label" style="margin-top:6px" id="debtNote"></div>
     </div>
 
     <!-- Donut: category breakdown -->
@@ -895,7 +914,7 @@ canvas{width:100%!important;display:block;}
 <div class="modal-overlay" id="modalOverlay" onclick="closeOnBg(event,'modalOverlay')">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">Add Payment</div>
+    <div class="modal-title" id="paymentModalTitle">Add Payment</div>
     <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="fName" type="text" placeholder="e.g. Spotify"></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Amount (€)</label><input class="form-input" id="fAmount" type="number" placeholder="9.99" step="0.01"></div>
@@ -927,7 +946,7 @@ canvas{width:100%!important;display:block;}
     </div>
     <div class="form-group"><label class="form-label">Note (optional)</label><textarea class="form-textarea" id="fNote" placeholder="e.g. shared with partner, cancel if needed…"></textarea></div>
     <div class="form-group"><label class="checkbox-row"><input type="checkbox" id="fOnetime"><span class="checkbox-label">🔴 One-time payment (not monthly)</span></label></div>
-    <button class="btn-submit" onclick="addPayment()">Add Payment</button>
+    <button class="btn-submit" id="paymentSubmitBtn" onclick="addPayment()">Add Payment</button>
     <button class="btn-cancel" onclick="closeModal()">Cancel</button>
   </div>
 </div>
@@ -1465,6 +1484,19 @@ function render(){
   document.getElementById('costFill').style.width=pct+'%';
   document.getElementById('costPct').textContent=pct.toFixed(1)+'% of net income';
 
+  // Still owed this month (unpaid fixed payments)
+  const unpaid=activeMonthly.filter(p=>!isPaidThisMonth(p.id));
+  const unpaidTotal=unpaid.reduce((s,p)=>s+p.amount,0);
+  const paidCount=activeMonthly.length-unpaid.length;
+  const stillOwedRow=document.getElementById('stillOwedRow');
+  if(activeMonthly.length>0){
+    stillOwedRow.style.display='flex';
+    document.getElementById('stillOwedVal').textContent=fmt(unpaidTotal);
+    document.getElementById('stillOwedMeta').textContent=paidCount>0?`${paidCount} of ${activeMonthly.length} marked paid`:`${activeMonthly.length} payment${activeMonthly.length===1?'':'s'} · tap ✓ to mark paid`;
+  } else {
+    stillOwedRow.style.display='none';
+  }
+
   // Remaining — planned
   document.getElementById('remaining').textContent=(rem<0?'−':'')+fmt(rem);
   document.getElementById('remainingPct').innerHTML=netIncome>0
@@ -1604,21 +1636,24 @@ function renderList(monthly, up){
     sec.innerHTML=`<div class="section-label">${catLabel(cat)}</div>`;
     items.forEach((p,i)=>{
       const div=document.createElement('div');
-      div.className='payment-item'+(upIds.has(p.id)?' due-soon':'')+(p.tag==='optional'?' is-optional':'');
+      const paid=!p.onetime&&isPaidThisMonth(p.id);
+      div.className='payment-item'+(upIds.has(p.id)?' due-soon':'')+(p.tag==='optional'?' is-optional':'')+(paid?' is-paid':'');
       div.style.animationDelay=(i*25)+'ms';
       const tagBtn = p.tag==='essential'
         ? `<button class="tag-toggle tag-essential" onclick="cycleTag(${p.id})" title="Tap to change">✅ Essential</button>`
         : p.tag==='optional'
         ? `<button class="tag-toggle tag-optional" onclick="cycleTag(${p.id})" title="Tap to change">✨ Optional</button>`
         : `<button class="tag-toggle tag-none" onclick="cycleTag(${p.id})" title="Tap to tag">+ Tag</button>`;
+      const paidBtn = p.onetime ? '' : `<button class="paid-btn${paid?' paid':''}" onclick="togglePaid(${p.id})" title="${paid?'Mark unpaid':'Mark as paid'}">✓</button>`;
       div.innerHTML=`<div class="swipe-delete-bg">Delete</div>
         <div class="pd ${catDot(cat)}" style="${catColor(cat)?'background:'+catColor(cat)+';':''}"></div>
-        <div class="pi">
+        <div class="pi" onclick="openEditModal(${p.id})" style="cursor:pointer">
           <div class="pi-name">${p.name}${p.onetime?'<span class="badge b-onetime">1×</span>':''}${upIds.has(p.id)?'<span class="badge b-due">Due</span>':''}</div>
           <div class="pi-meta">${p.onetime?(p.onetimeDate||''):'Ends: '+p.endDate}</div>
           ${p.note?`<div class="pi-note">💬 ${p.note}</div>`:''}
         </div>
-        <div class="pr"><div class="pr-amount">${fmt(p.amount)}</div><div class="pr-day">${p.onetime?'':'Day '+p.day}</div></div>
+        <div class="pr" onclick="openEditModal(${p.id})" style="cursor:pointer"><div class="pr-amount">${fmt(p.amount)}</div><div class="pr-day">${p.onetime?'':'Day '+p.day}</div></div>
+        ${paidBtn}
         ${tagBtn}
         <button class="delete-btn" onclick="deletePayment(${p.id})">×</button>`;
       sec.appendChild(div);
@@ -1653,7 +1688,80 @@ function buildForecast(){
 
 function renderForecast(){
   const data=buildForecast();
-  drawBarChart(data); drawTrendChart(data); drawDonut(data[0]); renderMonthCards(data); renderActualChart();
+  drawBarChart(data); drawTrendChart(data); drawDebtChart(); drawDonut(data[0]); renderMonthCards(data); renderActualChart();
+}
+function drawDebtChart(){
+  const canvas=document.getElementById('debtChart');
+  if(!canvas) return;
+  const card=document.getElementById('debtCard');
+  const now=today();
+  const installments=payments.filter(p=>!p.onetime && parseEndDate(p.endDate));
+  if(installments.length===0){ if(card) card.style.display='none'; return; }
+  if(card) card.style.display='';
+  const months=18;
+  const data=[];
+  for(let i=0;i<months;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()+i,1);
+    const y=d.getFullYear(),m=d.getMonth();
+    let debt=0;
+    installments.forEach(p=>{
+      if(!isActiveInMonth(p,y,m)) return;
+      const e=parseEndDate(p.endDate); if(!e) return;
+      const diff=(e.getFullYear()-y)*12+(e.getMonth()-m);
+      if(diff<0) return;
+      debt += p.amount*(diff+1);
+    });
+    data.push({label:d.toLocaleDateString('en-DE',{month:'short'}),isCurrent:i===0,debt});
+  }
+  const dpr=window.devicePixelRatio||1, W=canvas.parentElement.clientWidth, H=140;
+  canvas.width=W*dpr; canvas.height=H*dpr; canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const pad={top:16,bottom:28,left:52,right:10};
+  const cW=W-pad.left-pad.right, cH=H-pad.top-pad.bottom, n=data.length;
+  const vals=data.map(d=>d.debt);
+  const maxV=Math.max(...vals)*1.08 || 1;
+  const minV=0;
+  const toY=v=>pad.top+cH-((v-minV)/(maxV-minV||1))*cH;
+  const toX=i=>pad.left+(i/(n-1))*cW;
+  // Grid
+  for(let i=0;i<=3;i++){
+    const y=pad.top+cH-(i/3)*cH;
+    ctx.strokeStyle='#2e2e3e'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(W-pad.right,y); ctx.stroke();
+    ctx.fillStyle='#7a7a90'; ctx.font='9px DM Sans'; ctx.textAlign='right';
+    ctx.fillText(fmt(minV+(maxV-minV)*i/3).slice(0,8),pad.left-3,y+3);
+  }
+  // Fill
+  ctx.beginPath(); ctx.moveTo(toX(0),toY(vals[0]));
+  vals.forEach((_,i)=>{if(i)ctx.lineTo(toX(i),toY(vals[i]));});
+  ctx.lineTo(toX(n-1),pad.top+cH); ctx.lineTo(toX(0),pad.top+cH); ctx.closePath();
+  const grad=ctx.createLinearGradient(0,pad.top,0,pad.top+cH);
+  grad.addColorStop(0,'rgba(245,166,35,.22)'); grad.addColorStop(1,'rgba(245,166,35,0)');
+  ctx.fillStyle=grad; ctx.fill();
+  // Line
+  ctx.beginPath(); ctx.moveTo(toX(0),toY(vals[0]));
+  vals.forEach((_,i)=>{if(i)ctx.lineTo(toX(i),toY(vals[i]));});
+  ctx.strokeStyle='#f5a623'; ctx.lineWidth=2.5; ctx.lineJoin='round'; ctx.stroke();
+  // Dots — show every 3rd to avoid crowding
+  vals.forEach((v,i)=>{
+    const isMajor=i===0||i===n-1||i%3===0;
+    ctx.beginPath(); ctx.arc(toX(i),toY(v),isMajor?4:2.5,0,Math.PI*2);
+    ctx.fillStyle=i===0?'#c8f044':'#f5a623'; ctx.fill();
+    if(isMajor){
+      ctx.fillStyle=data[i].isCurrent?'#c8f044':'#7a7a90';
+      ctx.font='9px DM Sans'; ctx.textAlign='center';
+      ctx.fillText(data[i].label,toX(i),H-pad.bottom+11);
+    }
+  });
+  const startDebt=vals[0];
+  const endDebt=vals[vals.length-1];
+  const payoff=data.findIndex((d,i)=>i>0&&d.debt===0);
+  const note=startDebt===0
+    ? 'No installment debt — nothing to pay off 🎉'
+    : payoff>0
+      ? `💚 Fully paid off by ${data[payoff].label} — ${fmt(startDebt)} cleared`
+      : `📉 Debt drops from ${fmt(startDebt)} to ${fmt(endDebt)} over 18 months`;
+  document.getElementById('debtNote').textContent=note;
 }
 
 function drawBarChart(data){
@@ -1872,8 +1980,11 @@ function filterRange(r,el){activeRange=r;document.querySelectorAll('.range-pill'
 function switchTab(t,el){activeTab=t;document.querySelectorAll('.list-tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');render();}
 function filterTag(t,el){activeTag=t;document.querySelectorAll('.tag-chip').forEach(x=>x.classList.remove('active'));el.classList.add('active');render();}
 function openModal(){
+  editingPaymentId=null;
   populateCategorySelect();
   document.getElementById('newCategoryWrap').style.display='none';
+  document.getElementById('paymentModalTitle').textContent='Add Payment';
+  document.getElementById('paymentSubmitBtn').textContent='Add Payment';
   document.getElementById('modalOverlay').classList.add('open');
   document.getElementById('fName').focus();
 }
@@ -1884,6 +1995,9 @@ function closeModal(){
   document.getElementById('fTag').value='';
   document.getElementById('newCategoryWrap').style.display='none';
   document.getElementById('fCategory').value='sub';
+  editingPaymentId=null;
+  document.getElementById('paymentModalTitle').textContent='Add Payment';
+  document.getElementById('paymentSubmitBtn').textContent='Add Payment';
 }
 function closeOnBg(e,id){if(e.target===e.currentTarget)document.getElementById(id).classList.remove('open');}
 // Palette of colours to auto-assign to new categories
@@ -1914,6 +2028,48 @@ function populateCategorySelect() {
   });
 }
 
+let editingPaymentId=null;
+function isPaidThisMonth(id){
+  const key=budgetKey(budgetMonth.year,budgetMonth.month);
+  const b=monthlyBudgets[key];
+  return !!(b && Array.isArray(b.paidIds) && b.paidIds.includes(id));
+}
+function togglePaid(id){
+  getBudget();
+  const key=budgetKey(budgetMonth.year,budgetMonth.month);
+  if(!Array.isArray(monthlyBudgets[key].paidIds)) monthlyBudgets[key].paidIds=[];
+  const arr=monthlyBudgets[key].paidIds;
+  const idx=arr.indexOf(id);
+  if(idx>=0) arr.splice(idx,1); else arr.push(id);
+  save();render();
+}
+window.togglePaid=togglePaid;
+function dmyToIso(s){
+  if(!s||s==='ongoing'||s.includes(' ')||s.includes('&')) return '';
+  const p=s.split(/[./]/);
+  if(p.length!==3) return '';
+  return `${p[2]}-${String(p[1]).padStart(2,'0')}-${String(p[0]).padStart(2,'0')}`;
+}
+function openEditModal(id){
+  const p=payments.find(x=>x.id===id);
+  if(!p) return;
+  editingPaymentId=id;
+  populateCategorySelect();
+  document.getElementById('newCategoryWrap').style.display='none';
+  document.getElementById('paymentModalTitle').textContent='Edit Payment';
+  document.getElementById('paymentSubmitBtn').textContent='Save Changes';
+  document.getElementById('fName').value=p.name||'';
+  document.getElementById('fAmount').value=p.amount||'';
+  document.getElementById('fDay').value=p.onetime?'':(p.day||'');
+  document.getElementById('fCategory').value=p.cat||'sub';
+  document.getElementById('fTag').value=p.tag||'';
+  document.getElementById('fStartDate').value=dmyToIso(p.startDate);
+  document.getElementById('fEndDate').value=dmyToIso(p.endDate);
+  document.getElementById('fNote').value=p.note||'';
+  document.getElementById('fOnetime').checked=!!p.onetime;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+window.openEditModal=openEditModal;
 function addPayment(){
   const name=document.getElementById('fName').value.trim();
   const amount=parseFloat(document.getElementById('fAmount').value);
@@ -1941,10 +2097,16 @@ function addPayment(){
       cat=newId;
     }
   }
-  payments.push({id:nextId++,name,amount,day:onetime?1:day,cat,tag,note,onetime,
+  const payload={name,amount,day:onetime?1:day,cat,tag,note,onetime,
     startDate:startDate?new Date(startDate).toLocaleDateString('en-GB'):'',
     endDate:endDate?new Date(endDate).toLocaleDateString('en-GB'):'ongoing',
-    onetimeDate:endDate?new Date(endDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''});
+    onetimeDate:endDate?new Date(endDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''};
+  if(editingPaymentId!=null){
+    const idx=payments.findIndex(p=>p.id===editingPaymentId);
+    if(idx>=0) payments[idx]={...payments[idx],...payload};
+  } else {
+    payments.push({id:nextId++,...payload});
+  }
   save();closeModal();render();if(activeView==='forecast')renderForecast();
 }
 function openPaydayModal(){
