@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 7 * * *'  # 07:00 UTC = 09:00 CET / 09:00 CEST
   workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Send a test push to all registered devices regardless of due date'
+        type: boolean
+        default: false
 
 jobs:
   notify:
@@ -20,4 +25,5 @@ jobs:
         working-directory: scripts
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          TEST_MODE: ${{ inputs.test_mode }}
         run: node send-notifications.js

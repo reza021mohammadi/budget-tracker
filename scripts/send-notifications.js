@@ -26,6 +26,7 @@ function isActiveOn(p, date) {
 }
 
 async function main() {
+  const TEST_MODE = process.env.TEST_MODE === 'true';
   const now = new Date();
   const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowDay = tomorrow.getDate();
@@ -41,20 +42,27 @@ async function main() {
     const due = (data.payments || []).filter(p =>
       !p.onetime && p.day === tomorrowDay && isActiveOn(p, tomorrow)
     );
-    if (due.length === 0) continue;
+    if (!TEST_MODE && due.length === 0) continue;
 
     const tokensSnap = await hdoc.collection('pushTokens').get();
     const tokens = tokensSnap.docs.map(d => d.id);
     if (tokens.length === 0) continue;
 
-    const total = due.reduce((s, p) => s + p.amount, 0);
-    const list = due.slice(0, 3).map(p => `${p.name} ${fmt(p.amount)}`).join(', ');
-    const body = `${list}${due.length > 3 ? ` +${due.length - 3} more` : ''} — Total ${fmt(total)}`;
+    let title, body;
+    if (TEST_MODE) {
+      title = '✅ Test push from your budget app';
+      body = `If you see this, background notifications are working. (${tokens.length} device${tokens.length===1?'':'s'} registered)`;
+    } else {
+      const total = due.reduce((s, p) => s + p.amount, 0);
+      const list = due.slice(0, 3).map(p => `${p.name} ${fmt(p.amount)}`).join(', ');
+      title = '💶 Payments due tomorrow';
+      body = `${list}${due.length > 3 ? ` +${due.length - 3} more` : ''} — Total ${fmt(total)}`;
+    }
 
     try {
       const res = await messaging.sendEachForMulticast({
         tokens,
-        notification: { title: '💶 Payments due tomorrow', body }
+        notification: { title, body }
       });
       console.log(`${hdoc.id}: sent ${res.successCount}/${tokens.length}`);
       totalSent += res.successCount;
