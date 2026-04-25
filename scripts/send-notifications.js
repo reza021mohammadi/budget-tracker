@@ -67,15 +67,19 @@ async function main() {
       console.log(`${hdoc.id}: sent ${res.successCount}/${tokens.length}`);
       totalSent += res.successCount;
 
-      // Remove invalid tokens
+      // Inspect failures and clean up stale tokens
       for (let i = 0; i < res.responses.length; i++) {
         const r = res.responses[i];
-        if (!r.success && r.error && (
-          r.error.code === 'messaging/registration-token-not-registered' ||
-          r.error.code === 'messaging/invalid-registration-token'
-        )) {
-          await hdoc.collection('pushTokens').doc(tokens[i]).delete();
-          console.log(`  removed invalid token ${tokens[i].slice(0, 16)}…`);
+        if (!r.success) {
+          const code = r.error && r.error.code ? r.error.code : 'unknown';
+          const msg = r.error && r.error.message ? r.error.message : '';
+          console.log(`  token ${tokens[i].slice(0, 20)}… FAILED [${code}] ${msg}`);
+          if (code === 'messaging/registration-token-not-registered' ||
+              code === 'messaging/invalid-registration-token' ||
+              code === 'messaging/invalid-argument') {
+            await hdoc.collection('pushTokens').doc(tokens[i]).delete();
+            console.log(`    -> removed`);
+          }
         }
       }
     } catch (e) {
