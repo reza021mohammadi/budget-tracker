@@ -1,0 +1,7 @@
+.claude/
+scripts/node_modules/
+
+# Firebase service account JSON files — must never be committed
+*firebase-adminsdk*.json
+*-service-account*.json
+serviceAccount*.json

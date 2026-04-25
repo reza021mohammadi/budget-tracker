@@ -970,6 +970,10 @@ import { FIREBASE_CONFIG } from './config.js';
 import { initializeApp }            from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, arrayUnion } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-messaging.js';
+
+const VAPID_KEY = 'BA0dosUg4cw-aYPrM3QjuBX7oPqEvG5JNhUoYuszl-ufI2SBCy7hpgV0Syr9Gj46sNZNmWcDJVFzneKanRKta9A';
+let _messaging = null;
 
 // ── Firebase init ─────────────────────────────────────────────────
 let _db = null, _uid = null, _isSaving = false, _unsubscribe = null, _auth = null, _familyCode = null;
@@ -1168,6 +1172,7 @@ try {
   const app = initializeApp(FIREBASE_CONFIG);
   _db = getFirestore(app);
   _auth = getAuth(app);
+  try { _messaging = getMessaging(app); onMessage(_messaging, p => { if(p.notification && Notification.permission==='granted') new Notification(p.notification.title||'Budget',{body:p.notification.body||''}); }); } catch(e) { console.warn('Messaging init failed:',e); }
   const provider = new GoogleAuthProvider();
 
   // On page load, check if we're returning from a redirect sign-in
@@ -2820,15 +2825,34 @@ async function requestNotifPermission() {
   if(!('Notification' in window)){alert('Notifications not supported in this browser.');return;}
   const perm = await Notification.requestPermission();
   const btn = document.getElementById('notifBtn');
-  if(perm==='granted'){
-    btn.textContent='🔔✅';
-    btn.title='Notifications enabled';
-    localStorage.setItem('bgt_notif','1');
-    scheduleNotifications();
-    alert('Notifications enabled! You\'ll be reminded about payday and due payments.');
-  } else {
+  if(perm!=='granted'){
     btn.textContent='🔕';
     btn.title='Notifications blocked';
+    return;
+  }
+  btn.textContent='🔔✅';
+  btn.title='Notifications enabled';
+  localStorage.setItem('bgt_notif','1');
+  scheduleNotifications();
+  // Register FCM for background pushes
+  try {
+    if(!_messaging){alert('Notifications enabled (in-app only — messaging unavailable).');return;}
+    if(!('serviceWorker' in navigator)){alert('Notifications enabled (in-app only — service worker unavailable).');return;}
+    const swUrl=new URL('./firebase-messaging-sw.js',window.location.href).toString();
+    const swReg=await navigator.serviceWorker.register(swUrl);
+    const token=await getToken(_messaging,{vapidKey:VAPID_KEY,serviceWorkerRegistration:swReg});
+    if(!token){alert('Notifications enabled, but couldn\'t get a push token. Try reloading.');return;}
+    if(_familyCode && _uid){
+      await setDoc(doc(_db,'households',_familyCode,'pushTokens',token),{
+        uid:_uid, ua:navigator.userAgent.slice(0,200), createdAt:new Date().toISOString()
+      });
+      alert('Push notifications enabled! You\'ll get reminders for upcoming payments.');
+    } else {
+      alert('Notifications enabled, but you need to be signed in for push.');
+    }
+  } catch(e){
+    console.error('FCM setup failed:',e);
+    alert('Notifications enabled in-app, but push setup failed: '+(e.message||e));
   }
 }
 window.requestNotifPermission = requestNotifPermission;

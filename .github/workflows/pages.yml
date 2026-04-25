@@ -33,9 +33,9 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p site
-          rsync -a --exclude='.github' --exclude='.git' main-content/ site/
+          rsync -a --exclude='.github' --exclude='.git' --exclude='scripts' main-content/ site/
           mkdir -p site/preview
-          rsync -a --exclude='.github' --exclude='.git' develop-content/ site/preview/
+          rsync -a --exclude='.github' --exclude='.git' --exclude='scripts' develop-content/ site/preview/
           touch site/.nojekyll
 
       - name: Setup Pages
