@@ -1431,8 +1431,17 @@ function isActiveInMonth(p,y,m){
   const e=parseEndDate(p.endDate);
   return !e || e>=new Date(y,m,1);
 }
-function costsForMonth(y,m){ return payments.filter(p=>isActiveInMonth(p,y,m)).reduce((s,p)=>s+p.amount,0)+grocery+recreation+clothes+restaurant+other2; }
-function fixedCostsForMonth(y,m){ return payments.filter(p=>isActiveInMonth(p,y,m)).reduce((s,p)=>s+p.amount,0); }
+// True if a one-time payment is scheduled inside the given month
+function isOnetimeInMonth(p,y,m){
+  if(!p.onetime) return false;
+  const d=parseEndDate(p.endDate);
+  if(!d) return false;
+  return d.getFullYear()===y && d.getMonth()===m;
+}
+// True if the payment counts toward the given month's totals (recurring active OR one-time scheduled)
+function paymentInMonth(p,y,m){ return p.onetime ? isOnetimeInMonth(p,y,m) : isActiveInMonth(p,y,m); }
+function costsForMonth(y,m){ return payments.filter(p=>paymentInMonth(p,y,m)).reduce((s,p)=>s+p.amount,0)+grocery+recreation+clothes+restaurant+other2; }
+function fixedCostsForMonth(y,m){ return payments.filter(p=>paymentInMonth(p,y,m)).reduce((s,p)=>s+p.amount,0); }
 function nextOcc(day){ const n=today(),d=new Date(n.getFullYear(),n.getMonth(),day); if(d<=n) d.setMonth(d.getMonth()+1); return d; }
 function daysUntil(dt){ const n=today(); return Math.ceil((dt-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/864e5); }
 function upcomingPayments(days=7){ return payments.filter(p=>!p.onetime).map(p=>{const nx=nextOcc(p.day),d=daysUntil(nx);return d>=0&&d<=days?{...p,daysUntil:d}:null;}).filter(Boolean).sort((a,b)=>a.daysUntil-b.daysUntil); }
@@ -1472,7 +1481,9 @@ function render(){
   syncBudgetVars();
   const now=today(), monthly=payments.filter(p=>!p.onetime);
   const activeMonthly=monthly.filter(p=>isActiveInMonth(p,budgetMonth.year,budgetMonth.month));
-  const fixed=activeMonthly.reduce((s,p)=>s+p.amount,0);
+  const onetimeThisMonth=payments.filter(p=>isOnetimeInMonth(p,budgetMonth.year,budgetMonth.month));
+  const fixedAll=activeMonthly.concat(onetimeThisMonth);
+  const fixed=fixedAll.reduce((s,p)=>s+p.amount,0);
   const total=fixed+grocery+recreation+clothes+restaurant+other2;
   const rem=netIncome-total;
   const pct=Math.min(100,(total/netIncome)*100);
@@ -1506,14 +1517,14 @@ function render(){
   document.getElementById('costPct').textContent=pct.toFixed(1)+'% of net income';
 
   // Still owed this month (unpaid fixed payments)
-  const unpaid=activeMonthly.filter(p=>!isPaidThisMonth(p.id));
+  const unpaid=fixedAll.filter(p=>!isPaidThisMonth(p.id));
   const unpaidTotal=unpaid.reduce((s,p)=>s+p.amount,0);
-  const paidCount=activeMonthly.length-unpaid.length;
+  const paidCount=fixedAll.length-unpaid.length;
   const stillOwedRow=document.getElementById('stillOwedRow');
-  if(activeMonthly.length>0){
+  if(fixedAll.length>0){
     stillOwedRow.style.display='flex';
     document.getElementById('stillOwedVal').textContent=fmt(unpaidTotal);
-    document.getElementById('stillOwedMeta').textContent=paidCount>0?`${paidCount} of ${activeMonthly.length} marked paid`:`${activeMonthly.length} payment${activeMonthly.length===1?'':'s'} · tap ✓ to mark paid`;
+    document.getElementById('stillOwedMeta').textContent=paidCount>0?`${paidCount} of ${fixedAll.length} marked paid`:`${fixedAll.length} payment${fixedAll.length===1?'':'s'} · tap ✓ to mark paid`;
   } else {
     stillOwedRow.style.display='none';
   }
@@ -1607,9 +1618,13 @@ function render(){
   document.getElementById('upcomingList').innerHTML=up.length===0?'<div class="upcoming-empty">Nothing due in 7 days 🎉</div>':
     up.map(p=>`<div class="upcoming-item"><div class="upi-left"><div class="upi-dot ${catDot(p.cat)}"></div><span class="upi-name">${p.name}</span><span class="upi-badge">${p.daysUntil===0?'Today':p.daysUntil===1?'Tomorrow':'Day '+p.day}</span></div><span class="upi-amount">${fmt(p.amount)}</span></div>`).join('');
 
-  // Range pills
+  // Range pills — group both recurring and one-time payments by their day-of-month
   const rt={'1':0,'2':0,'3':0,'4':0};
-  activeMonthly.forEach(p=>{rt[getRange(p.day)]=(rt[getRange(p.day)]||0)+p.amount;});
+  fixedAll.forEach(p=>{
+    // For one-time payments, day is stored as 1; use the actual scheduled date instead
+    const dayKey = p.onetime ? (parseEndDate(p.endDate)?.getDate() || 1) : p.day;
+    rt[getRange(dayKey)]=(rt[getRange(dayKey)]||0)+p.amount;
+  });
   document.getElementById('range-all').textContent=fmt(fixed);
   ['1','2','3','4'].forEach(r=>document.getElementById('range-'+r).textContent=fmt(rt[r]||0));
 
@@ -1705,7 +1720,8 @@ function buildForecast(){
       grocery:b.grocery||0,recreation:b.recreation||0,
       clothes:b.clothes||0,restaurant:b.restaurant||0,other2:b.other2||0,
       total,net:ni-total,netIncome:ni,isCurrent:i===0,
-      payments:payments.filter(p=>!p.onetime).map(p=>({...p,active:isActiveInMonth(p,y,m)}))};
+      payments:payments.filter(p=>(!p.onetime)||isOnetimeInMonth(p,y,m))
+        .map(p=>({...p,active:p.onetime?true:isActiveInMonth(p,y,m)}))};
   });
 }
 
@@ -2788,7 +2804,7 @@ function renderSpending() {
   const d = spending[key] || {};
   const label = new Date(year, month, 1).toLocaleDateString('en-DE',{month:'long',year:'numeric'});
   document.getElementById('spendingMonthLabel').textContent = label;
-  const fixed = payments.filter(p=>isActiveInMonth(p,year,month)).reduce((s,p)=>s+p.amount,0);
+  const fixed = payments.filter(p=>paymentInMonth(p,year,month)).reduce((s,p)=>s+p.amount,0);
   const cats = [
     {id:'groceries',  label:'Groceries',       budget: grocery},
     {id:'recreation', label:'Recreation',       budget: recreation},
@@ -2835,7 +2851,7 @@ function renderActualChart() {
   const now = new Date();
   const key = spendingKey(now.getFullYear(), now.getMonth());
   const d = spending[key]||{};
-  const fixed = payments.filter(p=>isActiveInMonth(p,now.getFullYear(),now.getMonth())).reduce((s,p)=>s+p.amount,0);
+  const fixed = payments.filter(p=>paymentInMonth(p,now.getFullYear(),now.getMonth())).reduce((s,p)=>s+p.amount,0);
   const cats = [
     {label:'Grocery',   budget:grocery,     actual:d.groceries||0,   color:'#f5a623'},
     {label:'Recreation',budget:recreation,  actual:d.recreation||0,  color:'#38bdf8'},
