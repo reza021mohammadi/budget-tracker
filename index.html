@@ -637,20 +637,11 @@ canvas{width:100%!important;display:block;}
         <div style="text-align:right"><div class="pc-label">Days away</div><div class="pc-value" id="daysToPayday">—</div></div>
       </div>
     </div>
-    <!-- Savings goal -->
+    <!-- Buffer alert (warning if remaining drops below threshold) -->
     <div class="summary-card c-savings full-width">
-      <div class="card-label">💜 Savings Goal</div>
-      <div class="card-value cv-savings" id="savingsDisplay">€0 / mo</div>
-      <div class="edit-row" style="margin-top:6px">
-        <input type="number" id="savingsInput" placeholder="500">
-        <button onclick="updateField('savings')">Save</button>
-        <span style="font-size:11px;color:var(--muted)" id="savingsStatus"></span>
-      </div>
-      <div class="progress-bar" style="margin-top:10px"><div class="progress-fill pf-savings" id="savingsFill" style="width:0%"></div></div>
-      <div class="progress-label" id="savingsPct"></div>
-      <!-- Buffer threshold -->
-      <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;">Buffer Alert at</span>
+      <div class="card-label">⚠️ Buffer Alert</div>
+      <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:var(--muted);">Warn me when remaining drops below</span>
         <input type="number" id="bufferInput" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 9px;color:var(--text);font-size:12px;width:90px;outline:none;" placeholder="500">
         <button onclick="updateField('buffer')" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--text);font-size:11px;font-weight:700;cursor:pointer;">Set</button>
       </div>
@@ -1506,7 +1497,6 @@ function render(){
   document.getElementById('clothesInput').value=clothes;
   document.getElementById('restaurantInput').value=restaurant;
   document.getElementById('other2Input').value=other2;
-  document.getElementById('savingsInput').value=savingsGoal;
   document.getElementById('bufferInput').value=bufferAmt||'';
 
   // Total costs
@@ -1576,14 +1566,6 @@ function render(){
     bw.classList.add('show');
     document.getElementById('bufferMsg').textContent=`⚠️ Remaining ${fmt(rem)} is below your buffer of ${fmt(bufferAmt)}!`;
   } else { bw.classList.remove('show'); }
-
-  // Savings
-  const actualSavings=Math.max(0,rem-savingsGoal);
-  const savingsPct=savingsGoal>0?Math.min(100,(rem>=savingsGoal?100:Math.max(0,(rem/savingsGoal)*100))):0;
-  document.getElementById('savingsDisplay').textContent=fmt(savingsGoal)+' / mo goal';
-  document.getElementById('savingsFill').style.width=savingsPct+'%';
-  document.getElementById('savingsPct').textContent=rem>=savingsGoal?`✅ Goal met! ${fmt(actualSavings)} extra available`:`Need ${fmt(savingsGoal-rem)} more to hit goal`;
-  document.getElementById('savingsStatus').textContent='';
 
   // Payday countdown
   const nextPay=nextOcc(payday), dl=daysUntil(nextPay);
@@ -2006,7 +1988,7 @@ function renderExport(){
   const data=buildForecast();
   let out=`BUDGET EXPORT — ${now.toLocaleDateString('en-DE',{day:'numeric',month:'long',year:'numeric'})}\n`;
   out+=`${'─'.repeat(48)}\n`;
-  out+=`Net Income:      ${fmt(netIncome)}\nGroceries:       ${fmt(grocery)}\nRecreation:      ${fmt(recreation)}\nClothes:         ${fmt(clothes)}\nRestaurant/Cafe: ${fmt(restaurant)}\nOther:           ${fmt(other2)}\nFixed Costs:     ${fmt(fixed)}\nTotal Costs:     ${fmt(total)}\nRemaining:       ${fmt(netIncome-total)}\nSavings Goal:    ${fmt(savingsGoal)}\n\n`;
+  out+=`Net Income:      ${fmt(netIncome)}\nGroceries:       ${fmt(grocery)}\nRecreation:      ${fmt(recreation)}\nClothes:         ${fmt(clothes)}\nRestaurant/Cafe: ${fmt(restaurant)}\nOther:           ${fmt(other2)}\nFixed Costs:     ${fmt(fixed)}\nTotal Costs:     ${fmt(total)}\nRemaining:       ${fmt(netIncome-total)}\n\n`;
   out+=`PAYMENTS (${monthly.length} recurring)\n${'─'.repeat(48)}\n`;
   monthly.sort((a,b)=>a.day-b.day).forEach(p=>{ out+=`Day ${String(p.day).padStart(2,' ')}  ${p.name.padEnd(28,' ')} ${fmt(p.amount)}${p.tag?' ['+p.tag+']':''}\n`; });
   out+=`\n6-MONTH FORECAST\n${'─'.repeat(48)}\n`;
@@ -2104,7 +2086,6 @@ function updateField(f){
   if(f==='clothes'  ){const v=parseFloat(document.getElementById('clothesInput').value);   if(!isNaN(v)&&v>=0){getBudget().clothes   =v; clothes   =v;}}
   if(f==='restaurant'){const v=parseFloat(document.getElementById('restaurantInput').value);if(!isNaN(v)&&v>=0){getBudget().restaurant=v; restaurant=v;}}
   if(f==='other2'   ){const v=parseFloat(document.getElementById('other2Input').value);    if(!isNaN(v)&&v>=0){getBudget().other2    =v; other2    =v;}}
-  if(f==='savings'){const v=parseFloat(document.getElementById('savingsInput').value);if(!isNaN(v)&&v>=0)savingsGoal=v;}
   if(f==='buffer'){const v=parseFloat(document.getElementById('bufferInput').value);if(!isNaN(v)&&v>=0)bufferAmt=v;}
   save(); render(); if(activeView==='forecast') renderForecast();
 }
@@ -3147,7 +3128,6 @@ document.getElementById('recreationInput').value=recreation;
 document.getElementById('clothesInput').value=clothes;
 document.getElementById('restaurantInput').value=restaurant;
 document.getElementById('other2Input').value=other2;
-document.getElementById('savingsInput').value=savingsGoal;
 document.getElementById('bufferInput').value=bufferAmt||'';
 // Apply theme
 if(isLightMode){ document.body.classList.add('light-mode'); document.getElementById('themeBtn').textContent='☀️'; }
