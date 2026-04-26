@@ -1638,8 +1638,9 @@ function render(){
   });
   if(rem<0) ar.innerHTML+=`<div class="alert-item alert-danger">🚨 Total costs exceed income by ${fmt(Math.abs(rem))}!</div>`;
 
-  // Payment list
-  renderList(monthly, up);
+  // Payment list — show only payments active in the viewed month so
+  // ended installments naturally disappear once their end date has passed
+  renderList(activeMonthly, up);
 }
 
 function renderList(monthly, up){
