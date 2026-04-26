@@ -654,10 +654,10 @@ canvas{width:100%!important;display:block;}
       <div id="cycleCards" style="display:none;"></div>
     </div>
     <!-- Upcoming 7 days -->
-    <div class="summary-card c-upcoming full-width">
+    <div class="summary-card c-upcoming full-width" onclick="toggleUpcomingCard()" style="cursor:pointer;">
       <div class="card-label">📅 Due Next 7 Days</div>
       <div class="card-value cv-upcoming" id="upcomingTotal">€0</div>
-      <div class="upcoming-list" id="upcomingList"></div>
+      <div class="upcoming-list" id="upcomingList" style="display:none;"></div>
     </div>
   </div>
 
@@ -1400,6 +1400,12 @@ function toggleCycleCard() {
   const isOpen = cards.style.display !== 'none';
   cards.style.display = isOpen ? 'none' : 'block';
 }
+function toggleUpcomingCard() {
+  const list = document.getElementById('upcomingList');
+  const isOpen = list.style.display !== 'none';
+  list.style.display = isOpen ? 'none' : 'block';
+}
+window.toggleUpcomingCard = toggleUpcomingCard;
 
 function toggleCycleGroup(header) {
   const body    = header.closest('.cycle-card').querySelector('.cycle-body');
