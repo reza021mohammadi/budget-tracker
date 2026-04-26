@@ -977,6 +977,10 @@ let _messaging = null;
 
 // ── Firebase init ─────────────────────────────────────────────────
 let _db = null, _uid = null, _isSaving = false, _unsubscribe = null, _auth = null, _familyCode = null;
+// Set to true after the first snapshot fires for the current household.
+// Until then, refuse to push local state to Firestore — prevents the race
+// where default arrays clobber real cloud data on slow/cold loads.
+let _firstSyncDone = false;
 
 function setSyncBadge(state, label) {
   const b = document.getElementById('syncBadge');
@@ -1154,11 +1158,13 @@ function applyCloudData(d) {
 function startRealtimeSync() {
   if (!_familyCode) return;
   if (_unsubscribe) _unsubscribe();
+  _firstSyncDone = false;
   const docRef = doc(_db, 'households', _familyCode, 'data', 'main');
   _unsubscribe = onSnapshot(docRef,
     (snap) => {
       if (_isSaving) return;
       if (snap.exists()) applyCloudData(snap.data());
+      _firstSyncDone = true;
       setSyncBadge('synced', '✅ Synced');
     },
     (err) => {
@@ -1246,6 +1252,13 @@ try {
 
 async function saveToCloud() {
   if (!_db || !_uid || !_familyCode) return;
+  if (!_firstSyncDone) {
+    // Refuse to write until we've at least heard back from the cloud once.
+    // Prevents default-array data from clobbering real data on cold loads.
+    console.warn('Skipping cloud save — first sync has not completed yet');
+    setSyncBadge('syncing', '⏳ Waiting for first sync…');
+    return;
+  }
   _isSaving = true;
   setSyncBadge('syncing', '⏳ Saving…');
   try {
