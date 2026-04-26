@@ -178,6 +178,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .paid-btn.paid{background:var(--green);color:var(--bg);border-color:var(--green);}
 .payment-item.is-paid .pi-name{text-decoration:line-through;opacity:.55;}
 .payment-item.is-paid .pr-amount{opacity:.55;}
+.payment-item.is-archived{opacity:.45;}
+.payment-item.is-archived .pi-name{text-decoration:line-through;}
+.b-ended{font-size:9px;background:rgba(122,122,144,.18);color:var(--muted);border:1px solid rgba(122,122,144,.3);border-radius:99px;padding:1px 6px;margin-left:5px;font-weight:600;}
 .tag-none{background:var(--surface2);color:var(--muted);border:1px dashed var(--border);}
 .tag-essential{background:rgba(62,207,142,.12);border:1px solid rgba(62,207,142,.3);color:var(--green);}
 .tag-optional{background:rgba(181,123,238,.12);border:1px solid rgba(181,123,238,.3);color:var(--purple);}
@@ -779,6 +782,7 @@ canvas{width:100%!important;display:block;}
     <div class="tag-chip active" onclick="filterTag('all',this)">All</div>
     <div class="tag-chip tc-essential" onclick="filterTag('essential',this)">✅ Essential</div>
     <div class="tag-chip tc-optional" onclick="filterTag('optional',this)">✨ Optional</div>
+    <div class="tag-chip" id="archivedChip" onclick="toggleArchived(this)" style="margin-left:auto">📦 Archived</div>
   </div>
   <div id="listContainer"></div>
 </div>
@@ -1639,8 +1643,16 @@ function render(){
   if(rem<0) ar.innerHTML+=`<div class="alert-item alert-danger">🚨 Total costs exceed income by ${fmt(Math.abs(rem))}!</div>`;
 
   // Payment list — show only payments active in the viewed month so
-  // ended installments naturally disappear once their end date has passed
-  renderList(activeMonthly, up);
+  // ended installments naturally disappear once their end date has passed.
+  // If the user has toggled "Archived" on, append inactive ones at the end.
+  let listItems = activeMonthly;
+  if (showArchived) {
+    const archived = monthly
+      .filter(p => !isActiveInMonth(p, budgetMonth.year, budgetMonth.month))
+      .map(p => ({...p, _archived: true}));
+    listItems = activeMonthly.concat(archived);
+  }
+  renderList(listItems, up);
 }
 
 function renderList(monthly, up){
@@ -1664,19 +1676,20 @@ function renderList(monthly, up){
     sec.innerHTML=`<div class="section-label">${catLabel(cat)}</div>`;
     items.forEach((p,i)=>{
       const div=document.createElement('div');
-      const paid=!p.onetime&&isPaidThisMonth(p.id);
-      div.className='payment-item'+(upIds.has(p.id)?' due-soon':'')+(p.tag==='optional'?' is-optional':'')+(paid?' is-paid':'');
+      const archived=!!p._archived;
+      const paid=!p.onetime&&!archived&&isPaidThisMonth(p.id);
+      div.className='payment-item'+(upIds.has(p.id)?' due-soon':'')+(p.tag==='optional'?' is-optional':'')+(paid?' is-paid':'')+(archived?' is-archived':'');
       div.style.animationDelay=(i*25)+'ms';
       const tagBtn = p.tag==='essential'
         ? `<button class="tag-toggle tag-essential" onclick="cycleTag(${p.id})" title="Tap to change">✅ Essential</button>`
         : p.tag==='optional'
         ? `<button class="tag-toggle tag-optional" onclick="cycleTag(${p.id})" title="Tap to change">✨ Optional</button>`
         : `<button class="tag-toggle tag-none" onclick="cycleTag(${p.id})" title="Tap to tag">+ Tag</button>`;
-      const paidBtn = p.onetime ? '' : `<button class="paid-btn${paid?' paid':''}" onclick="togglePaid(${p.id})" title="${paid?'Mark unpaid':'Mark as paid'}">✓</button>`;
+      const paidBtn = (p.onetime||archived) ? '' : `<button class="paid-btn${paid?' paid':''}" onclick="togglePaid(${p.id})" title="${paid?'Mark unpaid':'Mark as paid'}">✓</button>`;
       div.innerHTML=`<div class="swipe-delete-bg">Delete</div>
         <div class="pd ${catDot(cat)}" style="${catColor(cat)?'background:'+catColor(cat)+';':''}"></div>
         <div class="pi" onclick="openEditModal(${p.id})" style="cursor:pointer">
-          <div class="pi-name">${p.name}${p.onetime?'<span class="badge b-onetime">1×</span>':''}${upIds.has(p.id)?'<span class="badge b-due">Due</span>':''}</div>
+          <div class="pi-name">${p.name}${p.onetime?'<span class="badge b-onetime">1×</span>':''}${upIds.has(p.id)?'<span class="badge b-due">Due</span>':''}${archived?`<span class="b-ended">Ended ${p.endDate||''}</span>`:''}</div>
           <div class="pi-meta">${p.onetime?(p.onetimeDate||''):'Ends: '+p.endDate}</div>
           ${p.note?`<div class="pi-note">💬 ${p.note}</div>`:''}
         </div>
@@ -2098,7 +2111,14 @@ function updateField(f){
 function deletePayment(id){if(!confirm('Remove?'))return;payments=payments.filter(p=>p.id!==id);save();render();}
 function filterRange(r,el){activeRange=r;document.querySelectorAll('.range-pill').forEach(p=>p.classList.remove('active'));el.classList.add('active');render();}
 function switchTab(t,el){activeTab=t;document.querySelectorAll('.list-tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');render();}
-function filterTag(t,el){activeTag=t;document.querySelectorAll('.tag-chip').forEach(x=>x.classList.remove('active'));el.classList.add('active');render();}
+function filterTag(t,el){activeTag=t;document.querySelectorAll('.tag-chip').forEach(x=>{ if(x.id!=='archivedChip') x.classList.remove('active'); });el.classList.add('active');render();}
+let showArchived=false;
+function toggleArchived(el){
+  showArchived=!showArchived;
+  el.classList.toggle('active',showArchived);
+  render();
+}
+window.toggleArchived=toggleArchived;
 function openModal(){
   editingPaymentId=null;
   populateCategorySelect();
