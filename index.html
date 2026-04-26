@@ -786,6 +786,12 @@ canvas{width:100%!important;display:block;}
 <!-- ══════════ EXPORT ══════════ -->
 <div class="view" id="view-export">
   <div class="forecast-section">
+    <div class="fs-title">Backup &amp; Restore</div>
+    <div class="fs-sub">Download a JSON snapshot of all your data. Keep this somewhere safe (iCloud Drive, email to yourself, etc.) — you can restore from it any time.</div>
+    <button class="btn-submit" style="margin-bottom:8px;" onclick="downloadBackup()">💾 Download Backup (JSON)</button>
+    <input type="file" id="restoreFile" accept="application/json" style="display:none" onchange="restoreBackup(this.files[0])">
+    <button class="btn-cancel" style="margin-bottom:18px;" onclick="document.getElementById('restoreFile').click()">📂 Restore from JSON…</button>
+
     <div class="fs-title">Export Summary</div>
     <div class="fs-sub">Copy and paste into a spreadsheet or message.</div>
     <button class="btn-submit" style="margin-bottom:12px;" onclick="copyExport()">📋 Copy to Clipboard</button>
@@ -969,7 +975,7 @@ import { FIREBASE_CONFIG } from './config.js';
 
 import { initializeApp }            from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, arrayUnion } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, arrayUnion, collection, getDocs, deleteDoc } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
 import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-messaging.js';
 
 const VAPID_KEY = 'BA0dosUg4cw-aYPrM3QjuBX7oPqEvG5JNhUoYuszl-ufI2SBCy7hpgV0Syr9Gj46sNZNmWcDJVFzneKanRKta9A';
@@ -1164,8 +1170,10 @@ function startRealtimeSync() {
     (snap) => {
       if (_isSaving) return;
       if (snap.exists()) applyCloudData(snap.data());
+      const wasFirstSync = !_firstSyncDone;
       _firstSyncDone = true;
       setSyncBadge('synced', '✅ Synced');
+      if (wasFirstSync) autoCloudBackup();
     },
     (err) => {
       setSyncBadge('offline', '🔴 Offline');
@@ -1994,6 +2002,83 @@ function renderExport(){
 function copyExport(){
   const txt=document.getElementById('exportSheet').textContent;
   navigator.clipboard.writeText(txt).then(()=>alert('Copied to clipboard!')).catch(()=>{});
+}
+
+// ════════ BACKUP / RESTORE ════════
+function buildBackupPayload(){
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    payday, savingsGoal, bufferAmt,
+    payments, monthlyBudgets, spending, customCategories,
+    meals, mealLibrary, sinkingFunds
+  };
+}
+function downloadBackup(){
+  const data = buildBackupPayload();
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `budget-backup-${stamp}.json`;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+}
+window.downloadBackup = downloadBackup;
+async function restoreBackup(file){
+  if(!file) return;
+  if(!confirm('Restore from this backup? This will REPLACE your current payments, budgets, spending, and other data with the backup contents. Your last download cannot be undone automatically.')) {
+    document.getElementById('restoreFile').value = '';
+    return;
+  }
+  try {
+    const text = await file.text();
+    const d = JSON.parse(text);
+    if(!d || typeof d !== 'object' || !Array.isArray(d.payments)){
+      throw new Error('File does not look like a budget backup.');
+    }
+    if(Array.isArray(d.payments))         payments         = d.payments;
+    if(d.monthlyBudgets && typeof d.monthlyBudgets === 'object') monthlyBudgets = d.monthlyBudgets;
+    if(d.spending && typeof d.spending === 'object')             spending       = d.spending;
+    if(Array.isArray(d.customCategories)) customCategories = d.customCategories;
+    if(d.meals && typeof d.meals === 'object')                   meals          = d.meals;
+    if(Array.isArray(d.mealLibrary))      mealLibrary      = d.mealLibrary;
+    if(Array.isArray(d.sinkingFunds))     sinkingFunds     = d.sinkingFunds;
+    if(typeof d.payday === 'number')      payday           = d.payday;
+    if(typeof d.savingsGoal === 'number') savingsGoal      = d.savingsGoal;
+    if(typeof d.bufferAmt === 'number')   bufferAmt        = d.bufferAmt;
+    nextId = Math.max(...payments.map(p=>p.id||0),0)+1;
+    syncBudgetVars();
+    save(); render(); if(activeView==='forecast') renderForecast();
+    alert('Backup restored. Your data has been updated locally and will sync to the cloud once the first sync completes.');
+  } catch(e) {
+    console.error('Restore failed:',e);
+    alert('Restore failed: ' + (e.message||e));
+  } finally {
+    document.getElementById('restoreFile').value = '';
+  }
+}
+window.restoreBackup = restoreBackup;
+// Daily auto-backup: when the cloud document loads, write a snapshot doc per day (keep last 7).
+let _autoBackupDoneToday = false;
+async function autoCloudBackup(){
+  if(!_db || !_familyCode || !_firstSyncDone) return;
+  if(_autoBackupDoneToday) return;
+  // Ensure we have actual data — refuse to back up an empty / default state
+  if(!Array.isArray(payments) || payments.length === 0) return;
+  _autoBackupDoneToday = true;
+  const stamp = new Date().toISOString().slice(0,10);
+  try {
+    await setDoc(doc(_db, 'households', _familyCode, 'backups', stamp), buildBackupPayload());
+    // prune older than 7 days
+    const cutoff = new Date(Date.now() - 7*864e5).toISOString().slice(0,10);
+    const snap = await getDocs(collection(_db, 'households', _familyCode, 'backups'));
+    for (const d of snap.docs) {
+      if (d.id < cutoff) {
+        await deleteDoc(doc(_db,'households',_familyCode,'backups',d.id));
+      }
+    }
+  } catch(e) { console.warn('Auto-backup failed:', e); }
 }
 
 // ════════ ACTIONS ════════
