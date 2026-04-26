@@ -2786,7 +2786,7 @@ function renderSpending() {
   const d = spending[key] || {};
   const label = new Date(year, month, 1).toLocaleDateString('en-DE',{month:'long',year:'numeric'});
   document.getElementById('spendingMonthLabel').textContent = label;
-  const fixed = payments.filter(p=>!p.onetime).reduce((s,p)=>s+p.amount,0);
+  const fixed = payments.filter(p=>isActiveInMonth(p,year,month)).reduce((s,p)=>s+p.amount,0);
   const cats = [
     {id:'groceries',  label:'Groceries',       budget: grocery},
     {id:'recreation', label:'Recreation',       budget: recreation},
@@ -2833,7 +2833,7 @@ function renderActualChart() {
   const now = new Date();
   const key = spendingKey(now.getFullYear(), now.getMonth());
   const d = spending[key]||{};
-  const fixed = payments.filter(p=>!p.onetime).reduce((s,p)=>s+p.amount,0);
+  const fixed = payments.filter(p=>isActiveInMonth(p,now.getFullYear(),now.getMonth())).reduce((s,p)=>s+p.amount,0);
   const cats = [
     {label:'Grocery',   budget:grocery,     actual:d.groceries||0,   color:'#f5a623'},
     {label:'Recreation',budget:recreation,  actual:d.recreation||0,  color:'#38bdf8'},
