@@ -2980,7 +2980,7 @@ async function requestNotifPermission() {
   btn.textContent='🔔✅';
   btn.title='Notifications enabled';
   localStorage.setItem('bgt_notif','1');
-  scheduleNotifications();
+  // Background pushes handled by FCM + the daily Cloud Action — no in-app duplicate.
   // Register FCM for background pushes
   try {
     if(!_messaging){alert('Notifications enabled (in-app only — messaging unavailable).');return;}
@@ -3194,7 +3194,7 @@ document.getElementById('bufferInput').value=bufferAmt||'';
 // Apply theme
 if(isLightMode){ document.body.classList.add('light-mode'); document.getElementById('themeBtn').textContent='☀️'; }
 // Notification button state
-if(typeof Notification!=='undefined' && Notification.permission==='granted'){ document.getElementById('notifBtn').textContent='🔔✅'; scheduleNotifications(); }
+if(typeof Notification!=='undefined' && Notification.permission==='granted'){ document.getElementById('notifBtn').textContent='🔔✅'; }
 render();
 renderSpending();
 renderSinkingFunds();
