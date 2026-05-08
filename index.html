@@ -1756,12 +1756,13 @@ function renderList(monthly, up){
 
 // ════════ FORECAST ════════
 function buildForecast(){
-  const now=today();
+  // Anchor the forecast at the user's selected budget month so the whole
+  // app reacts consistently when the month picker changes.
   return Array.from({length:6},(_,i)=>{
-    const d=new Date(now.getFullYear(),now.getMonth()+i,1);
+    const d=new Date(budgetMonth.year, budgetMonth.month+i, 1);
     const y=d.getFullYear(),m=d.getMonth();
     const key=budgetKey(y,m);
-    const b=monthlyBudgets[key]||getBudget(); // fall back to current month if not set
+    const b=monthlyBudgets[key]||getBudget();
     const fixed=fixedCostsForMonth(y,m);
     const varCosts=(b.grocery||0)+(b.recreation||0)+(b.clothes||0)+(b.restaurant||0)+(b.other2||0);
     const total=fixed+varCosts;
@@ -1788,7 +1789,8 @@ function drawDebtChart(){
   const canvas=document.getElementById('debtChart');
   if(!canvas) return;
   const card=document.getElementById('debtCard');
-  const now=today();
+  // Anchor at the selected budget month so the chart matches the rest of the app.
+  const now=new Date(budgetMonth.year, budgetMonth.month, 1);
   const installments=payments.filter(p=>p.isDebt && !p.onetime && parseEndDate(p.endDate));
   if(installments.length===0){
     if(card){
@@ -2906,10 +2908,11 @@ function renderActualChart() {
   const dpr = window.devicePixelRatio||1, W = canvas.parentElement.clientWidth, H = 160;
   canvas.width=W*dpr; canvas.height=H*dpr; canvas.style.width=W+'px'; canvas.style.height=H+'px';
   const ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
-  const now = new Date();
-  const key = spendingKey(now.getFullYear(), now.getMonth());
+  // Use the user-selected month so the chart matches the rest of the app.
+  const sy = spendingMonth.year, sm = spendingMonth.month;
+  const key = spendingKey(sy, sm);
   const d = spending[key]||{};
-  const fixed = payments.filter(p=>paymentInMonth(p,now.getFullYear(),now.getMonth())).reduce((s,p)=>s+p.amount,0);
+  const fixed = payments.filter(p=>paymentInMonth(p,sy,sm)).reduce((s,p)=>s+p.amount,0);
   const cats = [
     {label:'Grocery',   budget:grocery,     actual:d.groceries||0,   color:'#f5a623'},
     {label:'Recreation',budget:recreation,  actual:d.recreation||0,  color:'#38bdf8'},
