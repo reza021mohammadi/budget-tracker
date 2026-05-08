@@ -197,19 +197,15 @@ canvas{width:100%!important;display:block;}
 .legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
 
 /* Donut chart */
-.donut-wrap{display:flex;align-items:center;gap:16px;width:100%;}
+.donut-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;}
 .donut-canvas-wrap{flex-shrink:0;width:160px;height:160px;}
 #donutChart{width:160px;height:160px;overflow:visible;display:block;}
-.donut-legend{flex:1;min-width:0;}
-.dl-item{display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);}
-.dl-item:last-child{border-bottom:none;}
-.dl-left{display:flex;align-items:center;gap:7px;min-width:0;}
-.dl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.dl-pct{font-size:10px;color:var(--muted);}
-.donut-legend{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:7px;}
-.dl-item{display:flex;align-items:center;justify-content:space-between;font-size:12px;background:var(--surface2);border-radius:8px;padding:6px 9px;}
-.dl-left{display:flex;align-items:center;gap:6px;}
+.donut-legend{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+.dl-item{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:12px;background:var(--surface2);border-radius:8px;padding:6px 9px;min-width:0;}
+.dl-left{display:flex;align-items:center;gap:6px;min-width:0;flex:1;}
 .dl-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+.dl-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dl-right{display:flex;align-items:baseline;gap:4px;flex-shrink:0;}
 .dl-pct{font-size:10px;color:var(--muted);}
 
 /* Month cards */
@@ -2004,11 +2000,11 @@ function drawDonut(d){
     <div class="dl-item">
       <div class="dl-left">
         <div class="dl-dot" style="background:${c.color}"></div>
-        <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.label}</span>
+        <span class="dl-name" style="font-size:11px" title="${c.label}">${c.label}</span>
       </div>
-      <div style="flex-shrink:0;margin-left:8px">
+      <div class="dl-right">
         <b style="font-size:11px">${fmt(c.val)}</b>
-        <span class="dl-pct"> ${((c.val/total)*100).toFixed(0)}%</span>
+        <span class="dl-pct">${((c.val/total)*100).toFixed(0)}%</span>
       </div>
     </div>`).join('');
 }
