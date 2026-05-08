@@ -13,11 +13,7 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
-  const { title, body } = payload.notification || {};
-  self.registration.showNotification(title || '💶 Budget', {
-    body: body || '',
-    icon: './icon.png',
-    badge: './icon.png'
-  });
-});
+// Do NOT call self.registration.showNotification() here when the FCM payload
+// already contains a `notification` field — iOS/Safari auto-display the
+// system notification, and showing one ourselves would produce duplicates.
+// The system handles delivery directly from the `notification` payload.
