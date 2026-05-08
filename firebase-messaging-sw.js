@@ -18,7 +18,9 @@ const messaging = firebase.messaging();
 // legacy in-app scheduleNotifications path being disabled, this gives
 // exactly one banner per push.
 messaging.onBackgroundMessage((payload) => {
-  const { title, body } = payload.notification || {};
+  // Server sends data-only payloads to avoid the FCM SDK's auto-display.
+  // We render the notification ourselves so there's exactly one banner.
+  const { title, body } = payload.data || payload.notification || {};
   self.registration.showNotification(title || '💶 Budget', {
     body: body || '',
     icon: './icon.png',

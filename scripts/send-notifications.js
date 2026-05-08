@@ -84,9 +84,11 @@ async function main() {
     }
 
     try {
+      // Data-only payload: avoids the SDK's auto-display so the service
+      // worker can show exactly one notification per push.
       const res = await messaging.sendEachForMulticast({
         tokens,
-        notification: { title, body }
+        data: { title: String(title), body: String(body) }
       });
       console.log(`${hdoc.id}: sent ${res.successCount}/${tokens.length}`);
       totalSent += res.successCount;
