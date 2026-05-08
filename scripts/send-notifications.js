@@ -84,11 +84,16 @@ async function main() {
     }
 
     try {
-      // Data-only payload: avoids the SDK's auto-display so the service
-      // worker can show exactly one notification per push.
+      // Use webpush.notification (instead of top-level notification) so the
+      // FCM SDK doesn't auto-display in the service worker. The SW reads from
+      // payload.notification and renders exactly one banner. Including data
+      // copies for resilience in case the SW prefers data fields.
       const res = await messaging.sendEachForMulticast({
         tokens,
-        data: { title: String(title), body: String(body) }
+        data: { title: String(title), body: String(body) },
+        webpush: {
+          notification: { title: String(title), body: String(body) }
+        }
       });
       console.log(`${hdoc.id}: sent ${res.successCount}/${tokens.length}`);
       totalSent += res.successCount;
