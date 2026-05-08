@@ -516,17 +516,18 @@ canvas{width:100%!important;display:block;}
   ⚠️ <span id="bufferMsg">Remaining is below your buffer threshold.</span>
 </div>
 
+<!-- Global month navigator — visible across Overview / Forecast / Payments -->
+<div id="globalMonthNav" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 4px;">
+  <button class="cal-nav-btn" onclick="changeBudgetMonth(-1)">‹</button>
+  <div style="text-align:center">
+    <div style="font-size:15px;font-weight:700;color:var(--text)" id="budgetMonthLabel">—</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:2px" id="budgetMonthSub">Tap cards to edit budget for this month</div>
+  </div>
+  <button class="cal-nav-btn" onclick="changeBudgetMonth(1)">›</button>
+</div>
+
 <!-- ══════════ OVERVIEW ══════════ -->
 <div class="view active" id="view-overview">
-  <!-- Month navigator -->
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 4px;">
-    <button class="cal-nav-btn" onclick="changeBudgetMonth(-1)">‹</button>
-    <div style="text-align:center">
-      <div style="font-size:15px;font-weight:700;color:var(--text)" id="budgetMonthLabel">—</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:2px">Tap cards to edit budget for this month</div>
-    </div>
-    <button class="cal-nav-btn" onclick="changeBudgetMonth(1)">›</button>
-  </div>
   <div class="summary-row">
     <!-- Income -->
     <div class="summary-card c-income">
@@ -1497,6 +1498,16 @@ function switchView(v,el){
   if(el) el.classList.add('active');
   // Hide FAB on meals tab
   document.querySelector('.fab').style.display = v==='meals' ? 'none' : 'flex';
+  // Show the global month picker only on tabs where the budget month is meaningful
+  const monthNav = document.getElementById('globalMonthNav');
+  const monthSub = document.getElementById('budgetMonthSub');
+  if (monthNav) monthNav.style.display = (v==='overview'||v==='forecast'||v==='list') ? 'flex' : 'none';
+  if (monthSub) {
+    monthSub.textContent =
+      v==='overview' ? 'Tap cards to edit budget for this month' :
+      v==='forecast' ? 'Forecast and totals reflect this month' :
+      v==='list'     ? 'Showing payments for this month' : '';
+  }
   if(v==='forecast') renderForecast();
   if(v==='export')   renderExport();
   if(v==='meals')    renderMeals();
@@ -2841,6 +2852,7 @@ function changeBudgetMonth(dir) {
   syncBudgetVars();
   render();
   renderSpending();
+  if(activeView==='forecast') renderForecast();
 }
 window.changeBudgetMonth = changeBudgetMonth;
 window.changeSpendingMonth = (dir) => { changeBudgetMonth(dir); };
