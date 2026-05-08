@@ -11,19 +11,9 @@ firebase.initializeApp({
   appId: "1:130617560083:web:369e10ed924b2671c043e6"
 });
 
-const messaging = firebase.messaging();
-
-// iOS Safari does NOT auto-display from the FCM notification payload —
-// the service worker has to show it explicitly here. Combined with the
-// legacy in-app scheduleNotifications path being disabled, this gives
-// exactly one banner per push.
-messaging.onBackgroundMessage((payload) => {
-  // Server sends data-only payloads to avoid the FCM SDK's auto-display.
-  // We render the notification ourselves so there's exactly one banner.
-  const { title, body } = payload.data || payload.notification || {};
-  self.registration.showNotification(title || '💶 Budget', {
-    body: body || '',
-    icon: './icon.png',
-    badge: './icon.png'
-  });
-});
+// We rely on the FCM SDK's default behavior: when payload contains a
+// webpush.notification field, the SDK calls self.registration.showNotification
+// automatically. Defining onBackgroundMessage here would cause it to fire
+// again, producing duplicate banners. We just need messaging() to be
+// initialized so the SW can receive the push.
+firebase.messaging();
