@@ -1683,9 +1683,23 @@ function render(){
   renderList(listItems, up);
 }
 
+function isOnetimeFuture(p){
+  const d=parseEndDate(p.endDate);
+  if(!d) return true; // unparseable / special dates — keep visible
+  const n=today();
+  return d >= new Date(n.getFullYear(),n.getMonth(),n.getDate());
+}
 function renderList(monthly, up){
   const container=document.getElementById('listContainer'); container.innerHTML='';
-  const list=activeTab==='monthly'?monthly:payments.filter(p=>p.onetime);
+  // One-Time tab: hide past payments by default; include them tagged as _archived
+  // when the user toggles the Archived chip on.
+  let onetimeList = payments.filter(p=>p.onetime);
+  if (showArchived) {
+    onetimeList = onetimeList.map(p => isOnetimeFuture(p) ? p : {...p, _archived: true});
+  } else {
+    onetimeList = onetimeList.filter(isOnetimeFuture);
+  }
+  const list=activeTab==='monthly'?monthly:onetimeList;
   let filtered=(activeTab==='monthly'&&activeRange!=='all')?list.filter(p=>getRange(p.day)===activeRange):list;
   if(activeTab==='monthly'&&activeTag!=='all') filtered=filtered.filter(p=>p.tag===activeTag);
   // Search filter
