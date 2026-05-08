@@ -45,13 +45,14 @@ async function main() {
     if (!TEST_MODE && due.length === 0) continue;
 
     const tokensSnap = await hdoc.collection('pushTokens').get();
-    // Deduplicate: collapse tokens by uid+ua (same user on same device).
-    // Keep the most recently created one; delete the rest in Firestore so we
-    // don't send duplicate notifications and the token list stays tidy.
+    // Deduplicate by device (ua). If the same physical device has multiple
+    // tokens — e.g. from signing in with multiple accounts — keep only the
+    // most recent and prune the rest. This prevents duplicate push delivery
+    // to one device.
     const groups = new Map();
     for (const d of tokensSnap.docs) {
       const data = d.data() || {};
-      const key = `${data.uid || ''}::${data.ua || ''}`;
+      const key = data.ua || '';
       const existing = groups.get(key);
       if (!existing || (data.createdAt || '') > (existing.data.createdAt || '')) {
         groups.set(key, { id: d.id, data });

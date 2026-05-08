@@ -2991,13 +2991,15 @@ async function requestNotifPermission() {
     if(!token){alert('Notifications enabled, but couldn\'t get a push token. Try reloading.');return;}
     if(_familyCode && _uid){
       const ua = navigator.userAgent.slice(0,200);
-      // Remove any older tokens registered for this same uid+device — prevents duplicate pushes
+      // Remove any older tokens for this device (same ua), regardless of uid.
+      // Prevents duplicate pushes when the user has signed in with multiple
+      // accounts on the same device — only the most recent registration wins.
       try {
         const existing = await getDocs(collection(_db,'households',_familyCode,'pushTokens'));
         for (const d of existing.docs) {
           if (d.id === token) continue;
           const data = d.data() || {};
-          if (data.uid === _uid && data.ua === ua) {
+          if (data.ua === ua) {
             await deleteDoc(doc(_db,'households',_familyCode,'pushTokens',d.id));
           }
         }
