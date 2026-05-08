@@ -13,7 +13,15 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Do NOT call self.registration.showNotification() here when the FCM payload
-// already contains a `notification` field — iOS/Safari auto-display the
-// system notification, and showing one ourselves would produce duplicates.
-// The system handles delivery directly from the `notification` payload.
+// iOS Safari does NOT auto-display from the FCM notification payload —
+// the service worker has to show it explicitly here. Combined with the
+// legacy in-app scheduleNotifications path being disabled, this gives
+// exactly one banner per push.
+messaging.onBackgroundMessage((payload) => {
+  const { title, body } = payload.notification || {};
+  self.registration.showNotification(title || '💶 Budget', {
+    body: body || '',
+    icon: './icon.png',
+    badge: './icon.png'
+  });
+});
