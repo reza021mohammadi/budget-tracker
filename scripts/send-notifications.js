@@ -45,14 +45,18 @@ async function main() {
     if (!TEST_MODE && due.length === 0) continue;
 
     const tokensSnap = await hdoc.collection('pushTokens').get();
-    // Deduplicate by device (ua). If the same physical device has multiple
-    // tokens — e.g. from signing in with multiple accounts — keep only the
-    // most recent and prune the rest. This prevents duplicate push delivery
-    // to one device.
+    // Deduplicate by device fingerprint — the leading "Mozilla/5.0 (...)" parenthetical
+    // of the UA. This stays stable when the user updates Safari/Chrome to a new minor
+    // version, so the same physical device only ever keeps one active token.
+    const deviceKey = ua => {
+      if (!ua) return '';
+      const m = ua.match(/^[^)]+\)/);
+      return m ? m[0] : ua;
+    };
     const groups = new Map();
     for (const d of tokensSnap.docs) {
       const data = d.data() || {};
-      const key = data.ua || '';
+      const key = deviceKey(data.ua || '');
       const existing = groups.get(key);
       if (!existing || (data.createdAt || '') > (existing.data.createdAt || '')) {
         groups.set(key, { id: d.id, data });

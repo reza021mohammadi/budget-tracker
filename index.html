@@ -2991,15 +2991,16 @@ async function requestNotifPermission() {
     if(!token){alert('Notifications enabled, but couldn\'t get a push token. Try reloading.');return;}
     if(_familyCode && _uid){
       const ua = navigator.userAgent.slice(0,200);
-      // Remove any older tokens for this device (same ua), regardless of uid.
-      // Prevents duplicate pushes when the user has signed in with multiple
-      // accounts on the same device — only the most recent registration wins.
+      // Use the platform parenthetical (e.g. "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X)")
+      // as the device fingerprint — stable across browser/OS minor version bumps.
+      const deviceKey = (ua.match(/^[^)]+\)/) || [ua])[0];
       try {
         const existing = await getDocs(collection(_db,'households',_familyCode,'pushTokens'));
         for (const d of existing.docs) {
           if (d.id === token) continue;
           const data = d.data() || {};
-          if (data.ua === ua) {
+          const otherKey = (((data.ua || '').match(/^[^)]+\)/)) || [data.ua || ''])[0];
+          if (otherKey === deviceKey) {
             await deleteDoc(doc(_db,'households',_familyCode,'pushTokens',d.id));
           }
         }
