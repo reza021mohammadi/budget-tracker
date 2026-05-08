@@ -2990,8 +2990,20 @@ async function requestNotifPermission() {
     const token=await getToken(_messaging,{vapidKey:VAPID_KEY,serviceWorkerRegistration:swReg});
     if(!token){alert('Notifications enabled, but couldn\'t get a push token. Try reloading.');return;}
     if(_familyCode && _uid){
+      const ua = navigator.userAgent.slice(0,200);
+      // Remove any older tokens registered for this same uid+device — prevents duplicate pushes
+      try {
+        const existing = await getDocs(collection(_db,'households',_familyCode,'pushTokens'));
+        for (const d of existing.docs) {
+          if (d.id === token) continue;
+          const data = d.data() || {};
+          if (data.uid === _uid && data.ua === ua) {
+            await deleteDoc(doc(_db,'households',_familyCode,'pushTokens',d.id));
+          }
+        }
+      } catch(cleanupErr) { console.warn('Token cleanup skipped:', cleanupErr); }
       await setDoc(doc(_db,'households',_familyCode,'pushTokens',token),{
-        uid:_uid, ua:navigator.userAgent.slice(0,200), createdAt:new Date().toISOString()
+        uid:_uid, ua, createdAt:new Date().toISOString()
       });
       alert('Push notifications enabled! You\'ll get reminders for upcoming payments.');
     } else {

@@ -45,7 +45,26 @@ async function main() {
     if (!TEST_MODE && due.length === 0) continue;
 
     const tokensSnap = await hdoc.collection('pushTokens').get();
-    const tokens = tokensSnap.docs.map(d => d.id);
+    // Deduplicate: collapse tokens by uid+ua (same user on same device).
+    // Keep the most recently created one; delete the rest in Firestore so we
+    // don't send duplicate notifications and the token list stays tidy.
+    const groups = new Map();
+    for (const d of tokensSnap.docs) {
+      const data = d.data() || {};
+      const key = `${data.uid || ''}::${data.ua || ''}`;
+      const existing = groups.get(key);
+      if (!existing || (data.createdAt || '') > (existing.data.createdAt || '')) {
+        groups.set(key, { id: d.id, data });
+      }
+    }
+    const keep = new Set([...groups.values()].map(g => g.id));
+    for (const d of tokensSnap.docs) {
+      if (!keep.has(d.id)) {
+        await hdoc.collection('pushTokens').doc(d.id).delete();
+        console.log(`${hdoc.id}: removed duplicate token ${d.id.slice(0, 20)}…`);
+      }
+    }
+    const tokens = [...keep];
     if (tokens.length === 0) continue;
 
     let title, body;
