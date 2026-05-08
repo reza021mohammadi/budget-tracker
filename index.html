@@ -1326,14 +1326,14 @@ let budgetMonth = { year: _nowM.getFullYear(), month: _nowM.getMonth() };
 function budgetKey(y, m) { return `${y}-${String(m+1).padStart(2,'0')}`; }
 function getBudget() {
   const key = budgetKey(budgetMonth.year, budgetMonth.month);
-  // If no budget for this month, copy from previous month or use defaults
+  // If no budget for this month, copy from previous month or use defaults.
+  // Always reset paidIds — paid status is per-month and should not carry over.
   if(!monthlyBudgets[key]) {
-    const prev = budgetKey(budgetMonth.year, budgetMonth.month-1 < 0 ? 11 : budgetMonth.month-1);
     const prevYear = budgetMonth.month === 0 ? budgetMonth.year-1 : budgetMonth.year;
     const prevKey = budgetKey(prevYear, budgetMonth.month === 0 ? 11 : budgetMonth.month-1);
     monthlyBudgets[key] = monthlyBudgets[prevKey]
-      ? {...monthlyBudgets[prevKey]}
-      : {netIncome:3828,grocery:300,recreation:0,clothes:0,restaurant:0,other2:0};
+      ? {...monthlyBudgets[prevKey], paidIds: []}
+      : {netIncome:3828,grocery:300,recreation:0,clothes:0,restaurant:0,other2:0,paidIds:[]};
   }
   return monthlyBudgets[key];
 }
