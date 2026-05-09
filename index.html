@@ -527,6 +527,11 @@ canvas{width:100%!important;display:block;}
   <div class="nav-tab"        data-v="meals"     onclick="switchView('meals',this)">🍽 Meals</div>
 </div>
 
+<!-- Pull-to-refresh indicator -->
+<div id="ptrIndicator" style="position:fixed;top:0;left:0;right:0;z-index:200;height:50px;display:flex;align-items:center;justify-content:center;background:var(--surface);border-bottom:1px solid var(--border);transform:translateY(-100%);transition:transform .2s;font-size:13px;color:var(--muted);font-weight:600;pointer-events:none">
+  <span id="ptrText">Pull to refresh</span>
+</div>
+
 <!-- ══ BUFFER WARNING ══ -->
 <div class="buffer-warning" id="bufferWarning">
   ⚠️ <span id="bufferMsg">Remaining is below your buffer threshold.</span>
@@ -819,6 +824,15 @@ canvas{width:100%!important;display:block;}
       <span style="font-size:12px;color:var(--muted);">Warn me when remaining drops below</span>
       <input type="number" id="bufferInput" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:13px;width:100px;outline:none;" placeholder="500">
       <button onclick="updateField('buffer')" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer;">Set</button>
+    </div>
+
+    <div class="fs-title">🏦 Auto-Set-Aside</div>
+    <div class="fs-sub">Reserve a percentage of income each month (taxes, holidays, sinking funds…). Counts toward Total Costs and reduces Remaining.</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:var(--muted);">Set aside</span>
+      <input type="number" id="setasideInput" min="0" max="100" step="0.5" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:13px;width:80px;outline:none;" placeholder="0">
+      <span style="font-size:12px;color:var(--muted);">% of income</span>
+      <button onclick="updateField('setaside')" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer;">Set</button>
     </div>
 
     <div class="fs-title">Backup &amp; Restore</div>
@@ -1207,6 +1221,7 @@ function applyCloudData(d) {
   if (d.savingsGoal!=null){ savingsGoal = d.savingsGoal; localStorage.setItem('bgt_sg', d.savingsGoal); }
   if (d.bufferAmt!=null)  { bufferAmt   = d.bufferAmt;   localStorage.setItem('bgt_bf', d.bufferAmt); }
   if (d.notifPrefs && typeof d.notifPrefs === 'object') { notifPrefs = d.notifPrefs; localStorage.setItem('bgt_np', JSON.stringify(notifPrefs)); }
+  if (typeof d.autoSetasidePct === 'number') { autoSetasidePct = d.autoSetasidePct; localStorage.setItem('bgt_asa', autoSetasidePct); }
   if (d.updatedBy && d.updatedAt) {
     const el = document.getElementById('updatedByLabel');
     const me = _auth && _auth.currentUser ? (_auth.currentUser.displayName || _auth.currentUser.email) : null;
@@ -1330,7 +1345,7 @@ async function saveToCloud() {
   setSyncBadge('syncing', '⏳ Saving…');
   try {
     await setDoc(doc(_db, 'households', _familyCode, 'data', 'main'), {
-      payments, monthlyBudgets, meals, mealLibrary, sinkingFunds, spending, customCategories, payday, savingsGoal, bufferAmt, notifPrefs,
+      payments, monthlyBudgets, meals, mealLibrary, sinkingFunds, spending, customCategories, payday, savingsGoal, bufferAmt, notifPrefs, autoSetasidePct,
       updatedAt: new Date().toISOString(),
       updatedBy: _auth && _auth.currentUser ? (_auth.currentUser.displayName || _auth.currentUser.email || 'Unknown') : 'Unknown'
     });
@@ -1420,6 +1435,7 @@ let mealLibrary= JSON.parse(localStorage.getItem('bgt_ml')||'[]');
 let payday     = parseInt(localStorage.getItem('bgt_pd')  ||'25');
 let savingsGoal= parseFloat(localStorage.getItem('bgt_sg')||'500');
 let bufferAmt  = parseFloat(localStorage.getItem('bgt_bf')||'500');
+let autoSetasidePct = parseFloat(localStorage.getItem('bgt_asa')||'0');
 let notifPrefs = (() => {
   try { return JSON.parse(localStorage.getItem('bgt_np')||'null') || {}; } catch(e) { return {}; }
 })();
@@ -1612,9 +1628,11 @@ function render(){
   const onetimeThisMonth=payments.filter(p=>isOnetimeInMonth(p,budgetMonth.year,budgetMonth.month));
   const fixedAll=activeMonthly.concat(onetimeThisMonth);
   const fixed=fixedAll.reduce((s,p)=>s+p.amount,0);
-  const total=fixed+grocery+recreation+clothes+restaurant+other2;
+  const autoSetaside = Math.max(0, netIncome * (autoSetasidePct||0) / 100);
+  const total=fixed+grocery+recreation+clothes+restaurant+other2+autoSetaside;
   const rem=netIncome-total;
   const pct=Math.min(100,(total/netIncome)*100);
+  const savingsPct = netIncome>0 ? (rem/netIncome)*100 : 0;
 
   // Budget month label
   const bml = document.getElementById('budgetMonthLabel');
@@ -1637,10 +1655,11 @@ function render(){
   document.getElementById('restaurantInput').value=restaurant;
   document.getElementById('other2Input').value=other2;
   document.getElementById('bufferInput').value=bufferAmt||'';
+  const sa = document.getElementById('setasideInput'); if (sa) sa.value = autoSetasidePct || '';
 
   // Total costs
   document.getElementById('totalCosts').textContent=fmt(total);
-  document.getElementById('costBreakdown').textContent=`Fixed ${fmt(fixed)} + Groceries ${fmt(grocery)} + Recreation ${fmt(recreation)} + Clothes ${fmt(clothes)} + Restaurant ${fmt(restaurant)} + Other ${fmt(other2)}`;
+  document.getElementById('costBreakdown').textContent=`Fixed ${fmt(fixed)} + Groceries ${fmt(grocery)} + Recreation ${fmt(recreation)} + Clothes ${fmt(clothes)} + Restaurant ${fmt(restaurant)} + Other ${fmt(other2)}${autoSetaside>0?' + Set-aside '+fmt(autoSetaside)+' ('+autoSetasidePct+'%)':''}`;
   document.getElementById('costFill').style.width=pct+'%';
   document.getElementById('costPct').textContent=pct.toFixed(1)+'% of net income';
 
@@ -1660,7 +1679,7 @@ function render(){
   // Remaining — planned
   document.getElementById('remaining').textContent=(rem<0?'−':'')+fmt(rem);
   document.getElementById('remainingPct').innerHTML=netIncome>0
-    ?`<span style="background:rgba(200,240,68,.1);color:var(--accent);border:1px solid rgba(200,240,68,.2);border-radius:99px;padding:2px 7px">${((rem/netIncome)*100).toFixed(0)}% of income</span>`:'';
+    ?`<span style="background:rgba(200,240,68,.1);color:var(--accent);border:1px solid rgba(200,240,68,.2);border-radius:99px;padding:2px 7px">${savingsPct>=0?'💰 ':''}${savingsPct.toFixed(0)}% saved</span>`:'';
 
   // Remaining — actual (from spending tracker for this month)
   const spKey = budgetKey(budgetMonth.year, budgetMonth.month);
@@ -2485,6 +2504,7 @@ function updateField(f){
   if(f==='restaurant'){const v=parseFloat(document.getElementById('restaurantInput').value);if(!isNaN(v)&&v>=0){getBudget().restaurant=v; restaurant=v;}}
   if(f==='other2'   ){const v=parseFloat(document.getElementById('other2Input').value);    if(!isNaN(v)&&v>=0){getBudget().other2    =v; other2    =v;}}
   if(f==='buffer'){const v=parseFloat(document.getElementById('bufferInput').value);if(!isNaN(v)&&v>=0)bufferAmt=v;}
+  if(f==='setaside'){const v=parseFloat(document.getElementById('setasideInput').value);if(!isNaN(v)&&v>=0&&v<=100){autoSetasidePct=v;localStorage.setItem('bgt_asa',v);}}
   // Collapse the parent card after save (overview cards only)
   const inputMap = {income:'incomeInput', grocery:'groceryInput', recreation:'recreationInput', clothes:'clothesInput', restaurant:'restaurantInput', other2:'other2Input'};
   const inputId = inputMap[f];
@@ -3180,6 +3200,50 @@ function toggleSelected(id){
   render();
 }
 window.toggleSelected = toggleSelected;
+
+// ════════ PULL TO REFRESH ════════
+(() => {
+  const indicator = document.getElementById('ptrIndicator');
+  const text = document.getElementById('ptrText');
+  if (!indicator) return;
+  const THRESHOLD = 70;
+  let startY = 0, pulling = false, dy = 0;
+  document.addEventListener('touchstart', e => {
+    if (window.scrollY > 0) return;
+    if (selectionMode) return;
+    startY = e.touches[0].clientY;
+    pulling = true;
+    dy = 0;
+  }, {passive: true});
+  document.addEventListener('touchmove', e => {
+    if (!pulling) return;
+    dy = e.touches[0].clientY - startY;
+    if (dy > 0 && window.scrollY === 0) {
+      indicator.style.transform = `translateY(${Math.min(dy, 90) - 50}px)`;
+      text.textContent = dy > THRESHOLD ? '↻ Release to refresh' : 'Pull to refresh';
+    }
+  }, {passive: true});
+  document.addEventListener('touchend', async () => {
+    if (!pulling) return;
+    pulling = false;
+    if (dy > THRESHOLD) {
+      indicator.style.transform = 'translateY(0)';
+      text.textContent = '↻ Refreshing…';
+      try {
+        if (_db && _familyCode) {
+          const snap = await getDoc(doc(_db, 'households', _familyCode, 'data', 'main'));
+          if (snap.exists()) applyCloudData(snap.data());
+        }
+        text.textContent = '✅ Refreshed';
+      } catch(e) {
+        text.textContent = '⚠️ Refresh failed';
+      }
+      setTimeout(() => { indicator.style.transform = 'translateY(-100%)'; }, 600);
+    } else {
+      indicator.style.transform = 'translateY(-100%)';
+    }
+  });
+})();
 function bulkAction(action){
   const ids = [...selectedIds];
   if (ids.length === 0) { exitSelectionMode(); return; }
