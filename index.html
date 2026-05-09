@@ -41,6 +41,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .summary-card.collapsible{cursor:pointer;}
 .summary-card.collapsible .edit-row{display:none;}
 .summary-card.collapsible.expanded .edit-row{display:flex;margin-top:6px;}
+.summary-card.collapsible .card-detail{display:none;}
+.summary-card.collapsible.expanded .card-detail{display:block;}
 .summary-card.full-width,.summary-card.span-full{grid-column:1/-1;}
 .summary-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
 .summary-card.c-income::before{background:var(--green);}
@@ -598,18 +600,20 @@ canvas{width:100%!important;display:block;}
       </div>
     </div>
     <!-- Total costs -->
-    <div class="summary-card c-costs full-width">
+    <div class="summary-card c-costs full-width collapsible" onclick="toggleEditCard(this,event)">
       <div class="card-label">Total Costs (fixed + variable)</div>
       <div class="card-value cv-costs" id="totalCosts">€0</div>
-      <div class="card-sub" id="costBreakdown"></div>
-      <div class="progress-bar"><div class="progress-fill pf-costs" id="costFill" style="width:0%"></div></div>
-      <div class="progress-label" id="costPct"></div>
-      <div id="stillOwedRow" style="display:none;border-top:1px solid var(--border);margin-top:10px;padding-top:8px;display:flex;align-items:center;justify-content:space-between;">
-        <div>
-          <div style="font-size:11px;color:var(--muted)">Still owed this month</div>
-          <div id="stillOwedMeta" style="font-size:10px;color:var(--muted);opacity:.6;margin-top:2px"></div>
+      <div class="card-detail">
+        <div class="card-sub" id="costBreakdown"></div>
+        <div class="progress-bar"><div class="progress-fill pf-costs" id="costFill" style="width:0%"></div></div>
+        <div class="progress-label" id="costPct"></div>
+        <div id="stillOwedRow" style="display:none;border-top:1px solid var(--border);margin-top:10px;padding-top:8px;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:11px;color:var(--muted)">Still owed this month</div>
+            <div id="stillOwedMeta" style="font-size:10px;color:var(--muted);opacity:.6;margin-top:2px"></div>
+          </div>
+          <div id="stillOwedVal" style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--orange)">€0</div>
         </div>
-        <div id="stillOwedVal" style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--orange)">€0</div>
       </div>
     </div>
     <!-- Remaining -->
