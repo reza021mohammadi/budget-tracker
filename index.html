@@ -721,6 +721,7 @@ canvas{width:100%!important;display:block;}
       <div id="debtCurrent" style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--orange);margin:2px 0 6px"></div>
       <canvas id="debtChart" height="140"></canvas>
       <div class="progress-label" style="margin-top:6px" id="debtNote"></div>
+      <div id="debtBreakdown" style="margin-top:12px;display:flex;flex-direction:column;gap:6px"></div>
     </div>
 
     <!-- Donut: category breakdown -->
@@ -1818,6 +1819,7 @@ function drawDebtChart(){
       if(cv){ const ctx=cv.getContext('2d'); cv.width=cv.width; }
       document.getElementById('debtCurrent').textContent='';
       document.getElementById('debtNote').textContent='No debt marked yet — edit a payment and tick "💳 Count as debt" to include it here.';
+      document.getElementById('debtBreakdown').innerHTML='';
     }
     return;
   }
@@ -1889,6 +1891,35 @@ function drawDebtChart(){
   // Current-month debt total — shown above the chart
   const curLabel=new Date(now.getFullYear(),now.getMonth(),1).toLocaleDateString('en-DE',{month:'long',year:'numeric'});
   document.getElementById('debtCurrent').textContent=`${fmt(startDebt)} debt as of ${curLabel}`;
+  // Per-installment breakdown — list each debt item with its remaining stats
+  const items = installments.map(p=>{
+    if(!isActiveInMonth(p, now.getFullYear(), now.getMonth())) return null;
+    const e = parseEndDate(p.endDate);
+    const monthsLeft = (e.getFullYear()-now.getFullYear())*12 + (e.getMonth()-now.getMonth()) + 1;
+    if(monthsLeft<=0) return null;
+    return {
+      name: p.name,
+      cat: p.cat,
+      amount: p.amount,
+      monthsLeft,
+      remaining: p.amount * monthsLeft,
+      payoff: e.toLocaleDateString('en-DE',{month:'short',year:'numeric'})
+    };
+  }).filter(Boolean).sort((a,b)=>a.monthsLeft-b.monthsLeft);
+  const breakdown = document.getElementById('debtBreakdown');
+  breakdown.innerHTML = items.length === 0 ? '' :
+    `<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:2px">Debt items (${items.length})</div>` +
+    items.map(it=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:8px;padding:8px 10px;gap:8px">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${it.name}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">${fmt(it.amount)}/mo · ${it.monthsLeft} payment${it.monthsLeft===1?'':'s'} left · paid off ${it.payoff}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'DM Serif Display',serif;font-size:14px;color:var(--orange)">${fmt(it.remaining)}</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:1px">remaining</div>
+        </div>
+      </div>`).join('');
 }
 
 function drawBarChart(data){
