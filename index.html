@@ -39,6 +39,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .summary-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px 0;}
 .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px;position:relative;overflow:hidden;}
 .summary-card.collapsible{cursor:pointer;}
+.card-value.inline-edit{cursor:text;outline:none;border-radius:8px;padding:2px 4px;margin-left:-4px;transition:background .15s;}
+.card-value.inline-edit:focus{background:rgba(200,240,68,.08);}
 .summary-card.collapsible .edit-row{display:none;}
 .summary-card.collapsible.expanded .edit-row{display:flex;margin-top:6px;}
 .summary-card.collapsible .card-detail{display:none;}
@@ -553,58 +555,34 @@ canvas{width:100%!important;display:block;}
 <div class="view active" id="view-overview">
   <div class="summary-row">
     <!-- Income -->
-    <div class="summary-card c-income collapsible" onclick="toggleEditCard(this,event)">
+    <div class="summary-card c-income">
       <div class="card-label">Net Income</div>
-      <div class="card-value cv-income" id="incomeDisplay">€0</div>
-      <div class="edit-row">
-        <input type="number" id="incomeInput" placeholder="3828">
-        <button onclick="updateField('income')">Save</button>
-      </div>
+      <div class="card-value cv-income inline-edit" id="incomeDisplay" contenteditable="true" inputmode="decimal" enterkeyhint="done" data-field="income">€0</div>
     </div>
     <!-- Groceries -->
-    <div class="summary-card c-grocery collapsible" onclick="toggleEditCard(this,event)">
+    <div class="summary-card c-grocery">
       <div class="card-label">🛒 Groceries</div>
-      <div class="card-value cv-grocery" id="groceryDisplay">€0</div>
-      <div class="edit-row">
-        <input type="number" id="groceryInput" placeholder="300">
-        <button onclick="updateField('grocery')">Save</button>
-      </div>
+      <div class="card-value cv-grocery inline-edit" id="groceryDisplay" contenteditable="true" inputmode="decimal" enterkeyhint="done" data-field="grocery">€0</div>
     </div>
     <!-- Recreation -->
-    <div class="summary-card c-recreation collapsible" onclick="toggleEditCard(this,event)">
+    <div class="summary-card c-recreation">
       <div class="card-label">🎉 Recreation</div>
-      <div class="card-value cv-recreation" id="recreationDisplay">€0</div>
-      <div class="edit-row">
-        <input type="number" id="recreationInput" placeholder="200">
-        <button onclick="updateField('recreation')">Save</button>
-      </div>
+      <div class="card-value cv-recreation inline-edit" id="recreationDisplay" contenteditable="true" inputmode="decimal" enterkeyhint="done" data-field="recreation">€0</div>
     </div>
     <!-- Clothes -->
-    <div class="summary-card c-clothes collapsible" onclick="toggleEditCard(this,event)">
+    <div class="summary-card c-clothes">
       <div class="card-label">👗 Clothes</div>
-      <div class="card-value cv-clothes" id="clothesDisplay">€0</div>
-      <div class="edit-row">
-        <input type="number" id="clothesInput" placeholder="100">
-        <button onclick="updateField('clothes')">Save</button>
-      </div>
+      <div class="card-value cv-clothes inline-edit" id="clothesDisplay" contenteditable="true" inputmode="decimal" enterkeyhint="done" data-field="clothes">€0</div>
     </div>
     <!-- Restaurant -->
-    <div class="summary-card c-restaurant collapsible" onclick="toggleEditCard(this,event)">
+    <div class="summary-card c-restaurant">
       <div class="card-label">🍽 Restaurant/Cafe</div>
-      <div class="card-value cv-restaurant" id="restaurantDisplay">€0</div>
-      <div class="edit-row">
-        <input type="number" id="restaurantInput" placeholder="150">
-        <button onclick="updateField('restaurant')">Save</button>
-      </div>
+      <div class="card-value cv-restaurant inline-edit" id="restaurantDisplay" contenteditable="true" inputmode="decimal" enterkeyhint="done" data-field="restaurant">€0</div>
     </div>
     <!-- Other -->
-    <div class="summary-card c-other2 collapsible" onclick="toggleEditCard(this,event)">
+    <div class="summary-card c-other2">
       <div class="card-label">📦 Other</div>
-      <div class="card-value cv-other2" id="other2Display">€0</div>
-      <div class="edit-row">
-        <input type="number" id="other2Input" placeholder="100">
-        <button onclick="updateField('other2')">Save</button>
-      </div>
+      <div class="card-value cv-other2 inline-edit" id="other2Display" contenteditable="true" inputmode="decimal" enterkeyhint="done" data-field="other2">€0</div>
     </div>
     <!-- Total costs -->
     <div class="summary-card c-costs full-width collapsible" onclick="toggleEditCard(this,event)">
@@ -1865,18 +1843,20 @@ function render(){
   document.getElementById('headerDate').textContent=now.toLocaleDateString('en-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const _pdEl = document.getElementById('paydayDisplay');
   if (_pdEl) _pdEl.textContent = payday;
-  document.getElementById('incomeDisplay').textContent=fmt(netIncome);
-  document.getElementById('groceryDisplay').textContent=fmt(grocery);
-  document.getElementById('recreationDisplay').textContent=fmt(recreation);
-  document.getElementById('clothesDisplay').textContent=fmt(clothes);
-  document.getElementById('restaurantDisplay').textContent=fmt(restaurant);
-  document.getElementById('other2Display').textContent=fmt(other2);
-  document.getElementById('incomeInput').value=netIncome;
-  document.getElementById('groceryInput').value=grocery;
-  document.getElementById('recreationInput').value=recreation;
-  document.getElementById('clothesInput').value=clothes;
-  document.getElementById('restaurantInput').value=restaurant;
-  document.getElementById('other2Input').value=other2;
+  // Set display text on inline-editable cards, but never disrupt the user
+  // mid-typing — skip if the element currently has focus.
+  const setDisplay = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (document.activeElement === el) return;
+    el.textContent = fmt(val);
+  };
+  setDisplay('incomeDisplay', netIncome);
+  setDisplay('groceryDisplay', grocery);
+  setDisplay('recreationDisplay', recreation);
+  setDisplay('clothesDisplay', clothes);
+  setDisplay('restaurantDisplay', restaurant);
+  setDisplay('other2Display', other2);
   document.getElementById('bufferInput').value=bufferAmt||'';
   const sa = document.getElementById('setasideInput'); if (sa) sa.value = autoSetasidePct || '';
 
@@ -2882,23 +2862,46 @@ async function autoCloudBackup(){
 
 // ════════ ACTIONS ════════
 function updateField(f){
-  if(f==='income'){const v=parseFloat(document.getElementById('incomeInput').value);if(!isNaN(v)&&v>0)netIncome=v;}
-  if(f==='income'   ){const v=parseFloat(document.getElementById('incomeInput').value);   if(!isNaN(v)&&v>=0){getBudget().netIncome =v; netIncome =v;}}
-  if(f==='grocery'  ){const v=parseFloat(document.getElementById('groceryInput').value);   if(!isNaN(v)&&v>=0){getBudget().grocery   =v; grocery   =v;}}
-  if(f==='recreation'){const v=parseFloat(document.getElementById('recreationInput').value);if(!isNaN(v)&&v>=0){getBudget().recreation=v; recreation=v;}}
-  if(f==='clothes'  ){const v=parseFloat(document.getElementById('clothesInput').value);   if(!isNaN(v)&&v>=0){getBudget().clothes   =v; clothes   =v;}}
-  if(f==='restaurant'){const v=parseFloat(document.getElementById('restaurantInput').value);if(!isNaN(v)&&v>=0){getBudget().restaurant=v; restaurant=v;}}
-  if(f==='other2'   ){const v=parseFloat(document.getElementById('other2Input').value);    if(!isNaN(v)&&v>=0){getBudget().other2    =v; other2    =v;}}
   if(f==='buffer'){const v=parseFloat(document.getElementById('bufferInput').value);if(!isNaN(v)&&v>=0)bufferAmt=v;}
   if(f==='setaside'){const v=parseFloat(document.getElementById('setasideInput').value);if(!isNaN(v)&&v>=0&&v<=100){autoSetasidePct=v;localStorage.setItem('bgt_asa',v);}}
-  // Collapse the parent card after save (overview cards only)
-  const inputMap = {income:'incomeInput', grocery:'groceryInput', recreation:'recreationInput', clothes:'clothesInput', restaurant:'restaurantInput', other2:'other2Input'};
-  const inputId = inputMap[f];
-  if (inputId) {
-    const card = document.getElementById(inputId)?.closest('.summary-card.collapsible');
-    if (card) card.classList.remove('expanded');
-  }
   save(); render(); if(activeView==='forecast') renderForecast();
+}
+function setBudgetField(field, value){
+  if (isNaN(value) || value < 0) return false;
+  const b = getBudget();
+  if (field === 'income')          { b.netIncome  = value; netIncome  = value; }
+  else if (field === 'grocery')    { b.grocery    = value; grocery    = value; }
+  else if (field === 'recreation') { b.recreation = value; recreation = value; }
+  else if (field === 'clothes')    { b.clothes    = value; clothes    = value; }
+  else if (field === 'restaurant') { b.restaurant = value; restaurant = value; }
+  else if (field === 'other2')     { b.other2     = value; other2     = value; }
+  else return false;
+  save(); render(); if (activeView === 'forecast') renderForecast();
+  return true;
+}
+function attachInlineEditHandlers(){
+  document.querySelectorAll('.card-value.inline-edit').forEach(el => {
+    if (el.dataset.inlineBound) return;
+    el.dataset.inlineBound = '1';
+    el.addEventListener('focus', () => {
+      const raw = (el.textContent || '').replace(/[^\d.,]/g, '').replace(',', '.');
+      el.textContent = raw;
+      setTimeout(() => {
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        const s = getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+      }, 10);
+    });
+    el.addEventListener('blur', () => {
+      const v = parseFloat((el.textContent || '').replace(',', '.'));
+      if (!setBudgetField(el.dataset.field, v)) render(); // restore on invalid
+    });
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+    });
+  });
 }
 function toggleEditCard(card, e){
   if (e && (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON')) return;
@@ -4131,12 +4134,8 @@ document.getElementById('joinHouseholdBtn').addEventListener('click', async () =
   }
 });
 
+attachInlineEditHandlers();
 // INIT — render from localStorage FIRST so page is never blank
-document.getElementById('incomeInput').value=netIncome;
-document.getElementById('groceryInput').value=grocery;
-document.getElementById('recreationInput').value=recreation;
-document.getElementById('clothesInput').value=clothes;
-document.getElementById('restaurantInput').value=restaurant;
 document.getElementById('other2Input').value=other2;
 document.getElementById('bufferInput').value=bufferAmt||'';
 // Apply theme
