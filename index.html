@@ -519,7 +519,7 @@ canvas{width:100%!important;display:block;}
   <div class="nav-tab active" data-v="overview"  onclick="switchView('overview',this)">Overview</div>
   <div class="nav-tab"        data-v="forecast"  onclick="switchView('forecast',this)">Forecast</div>
   <div class="nav-tab"        data-v="list"      onclick="switchView('list',this)">Payments</div>
-  <div class="nav-tab"        data-v="export"    onclick="switchView('export',this)">Export</div>
+  <div class="nav-tab"        data-v="export"    onclick="switchView('export',this)">⚙️ Settings</div>
   <div class="nav-tab"        data-v="meals"     onclick="switchView('meals',this)">🍽 Meals</div>
 </div>
 
@@ -652,15 +652,6 @@ canvas{width:100%!important;display:block;}
           <div><div class="pc-label">Next payday</div><div class="pc-value" id="paydayDate">—</div></div>
           <div style="text-align:right"><div class="pc-label">Days away</div><div class="pc-value" id="daysToPayday">—</div></div>
         </div>
-      </div>
-    </div>
-    <!-- Buffer alert (warning if remaining drops below threshold) -->
-    <div class="summary-card c-savings full-width">
-      <div class="card-label">⚠️ Buffer Alert</div>
-      <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <span style="font-size:11px;color:var(--muted);">Warn me when remaining drops below</span>
-        <input type="number" id="bufferInput" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 9px;color:var(--text);font-size:12px;width:90px;outline:none;" placeholder="500">
-        <button onclick="updateField('buffer')" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--text);font-size:11px;font-weight:700;cursor:pointer;">Set</button>
       </div>
     </div>
     <!-- Pay-cycle -->
@@ -817,6 +808,14 @@ canvas{width:100%!important;display:block;}
     <div class="fs-title">🔔 Notification Preferences</div>
     <div class="fs-sub">Choose which pushes to receive. Daily delivery at 09:00 CET.</div>
     <div id="notifPrefsBox" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:18px;display:flex;flex-direction:column;gap:10px"></div>
+
+    <div class="fs-title">⚠️ Buffer Alert</div>
+    <div class="fs-sub">Get a banner on the Overview when planned remaining drops below this amount.</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:var(--muted);">Warn me when remaining drops below</span>
+      <input type="number" id="bufferInput" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:13px;width:100px;outline:none;" placeholder="500">
+      <button onclick="updateField('buffer')" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer;">Set</button>
+    </div>
 
     <div class="fs-title">Backup &amp; Restore</div>
     <div class="fs-sub">Download a JSON snapshot of all your data. Keep this somewhere safe (iCloud Drive, email to yourself, etc.) — you can restore from it any time.</div>
