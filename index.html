@@ -511,9 +511,7 @@ canvas{width:100%!important;display:block;}
     <div class="header-actions">
       <button id="familyCodeBadge" class="family-code-badge" style="display:none;" title="Tap to leave household"></button>
       <div id="syncBadge" class="sync-badge">⏳ Connecting…</div>
-      <button class="theme-btn" onclick="toggleTheme()" id="themeBtn" title="Toggle light/dark">🌙</button>
       <button class="notif-btn" onclick="requestNotifPermission()" id="notifBtn" title="Enable notifications">🔔</button>
-      <div class="payday-btn" onclick="openPaydayModal()">📅 Payday <span id="paydayDisplay">25</span></div>
       <button class="refresh-btn" onclick="hardRefresh()" title="Refresh">↻</button>
     </div>
   </div>
@@ -711,12 +709,6 @@ canvas{width:100%!important;display:block;}
     <button class="btn-submit" style="margin-top:10px;font-size:12px;padding:10px;" onclick="saveSpending()">Save Actuals</button>
   </div>
 
-  <!-- Sinking Funds -->
-  <div style="padding:14px 16px 6px;display:flex;align-items:center;justify-content:space-between;">
-    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;font-weight:600;">🏦 Sinking Funds</div>
-    <button onclick="openFundModal()" style="background:var(--purple);color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">+ Fund</button>
-  </div>
-  <div id="sinkingFundsList"></div>
 </div>
 
 <!-- ══════════ FORECAST ══════════ -->
@@ -846,6 +838,42 @@ canvas{width:100%!important;display:block;}
       <input type="number" id="setasideInput" min="0" max="100" step="0.5" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:13px;width:80px;outline:none;" placeholder="0">
       <span style="font-size:12px;color:var(--muted);">% of income</span>
       <button onclick="updateField('setaside')" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer;">Set</button>
+    </div>
+
+    <div class="fs-title">🗓 Payday</div>
+    <div class="fs-sub">The day of the month your salary arrives. Powers payday countdown and the pay-cycle card.</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <div style="font-size:13px;color:var(--text)">Pay day: <b id="paydaySettingsDisplay">25</b></div>
+      <button onclick="openPaydayModal()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer;">Change…</button>
+    </div>
+
+    <div class="fs-title">🎨 Theme</div>
+    <div class="fs-sub">Switch between light and dark mode.</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:18px;display:flex;gap:8px;flex-wrap:wrap;" id="themeRow">
+      <button onclick="setTheme('dark')"  data-theme="dark"  class="theme-opt" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer">🌙 Dark</button>
+      <button onclick="setTheme('light')" data-theme="light" class="theme-opt" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer">☀️ Light</button>
+    </div>
+
+    <div class="fs-title">🏷 Custom Categories</div>
+    <div class="fs-sub">Categories you've added beyond the defaults. Tap to rename or delete.</div>
+    <div id="customCatList" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:18px;display:flex;flex-direction:column;gap:8px"></div>
+
+    <div class="fs-title">🏦 Sinking Funds</div>
+    <div class="fs-sub">Set aside a fixed amount each month toward a goal (vacation, new laptop, emergency fund).</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:18px">
+      <div id="sinkingFundsList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button onclick="openFundModal()" style="margin-top:10px;width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer">+ Add Fund</button>
+    </div>
+
+    <div class="fs-title">👥 Account</div>
+    <div class="fs-sub">Manage who's signed in and which household you're sharing.</div>
+    <div id="accountBox" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:18px;display:flex;flex-direction:column;gap:10px"></div>
+
+    <div class="fs-title">🛠 Maintenance</div>
+    <div class="fs-sub">Use these only if something looks wrong. Local cache wipe re-downloads from the cloud.</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:18px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="forceResync()"   style="flex:1;min-width:140px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer">↻ Force Re-Sync</button>
+      <button onclick="clearLocalCache()" style="flex:1;min-width:140px;background:rgba(255,78,78,.1);border:1px solid rgba(255,78,78,.3);border-radius:8px;padding:8px;color:var(--danger);font-size:12px;font-weight:700;cursor:pointer">⚠️ Clear Local Cache</button>
     </div>
 
     <div class="fs-title">Backup &amp; Restore</div>
@@ -2540,8 +2568,113 @@ function renderNotifPrefs(){
   });
 }
 window.renderNotifPrefs = renderNotifPrefs;
+
+// ════════ SETTINGS EXTRAS ════════
+function setTheme(mode){
+  const light = mode === 'light';
+  isLightMode = light;
+  document.body.classList.toggle('light-mode', light);
+  const btn = document.getElementById('themeBtn');
+  if (btn) btn.textContent = light ? '🌙' : '☀️';
+  localStorage.setItem('bgt_theme', light ? 'light' : 'dark');
+  document.querySelectorAll('#themeRow .theme-opt').forEach(b => {
+    const active = b.dataset.theme === mode;
+    b.style.background = active ? 'rgba(200,240,68,.15)' : 'var(--surface2)';
+    b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    b.style.color = active ? 'var(--accent)' : 'var(--text)';
+  });
+  if (typeof renderForecast === 'function' && activeView==='forecast') renderForecast();
+}
+window.setTheme = setTheme;
+function renderSettingsExtras(){
+  // Payday display
+  const pd = document.getElementById('paydaySettingsDisplay');
+  if (pd) pd.textContent = payday;
+  // Theme highlight
+  document.querySelectorAll('#themeRow .theme-opt').forEach(b => {
+    const active = b.dataset.theme === (isLightMode ? 'light' : 'dark');
+    b.style.background = active ? 'rgba(200,240,68,.15)' : 'var(--surface2)';
+    b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    b.style.color = active ? 'var(--accent)' : 'var(--text)';
+  });
+  // Custom categories list
+  const ccBox = document.getElementById('customCatList');
+  if (ccBox) {
+    if (!customCategories.length) {
+      ccBox.innerHTML = '<div style="font-size:12px;color:var(--muted)">No custom categories yet. Add one via the Add Payment modal.</div>';
+    } else {
+      ccBox.innerHTML = customCategories.map(c => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--surface2);border-radius:8px">
+          <span style="width:10px;height:10px;border-radius:50%;background:${c.color};flex-shrink:0"></span>
+          <span style="flex:1;font-size:13px;color:var(--text)">${c.label}</span>
+          <button onclick="renameCustomCat('${c.id}')"  style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer">Rename</button>
+          <button onclick="deleteCustomCat('${c.id}')"  style="background:rgba(255,78,78,.1);border:1px solid rgba(255,78,78,.3);border-radius:6px;padding:4px 8px;color:var(--danger);font-size:11px;cursor:pointer">Delete</button>
+        </div>`).join('');
+    }
+  }
+  // Account box
+  const acc = document.getElementById('accountBox');
+  if (acc) {
+    const user = (_auth && _auth.currentUser) || null;
+    const name = user ? (user.displayName || user.email || 'Signed in') : 'Not signed in';
+    const code = _familyCode || '—';
+    acc.innerHTML = `
+      <div style="font-size:13px;color:var(--text)">Signed in as <b>${name}</b></div>
+      <div style="font-size:13px;color:var(--text)">Household code: <b>${code}</b></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+        ${_familyCode ? `<button onclick="leaveHousehold()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer">Leave Household</button>` : ''}
+        ${user ? `<button onclick="signOut()" style="background:rgba(255,78,78,.1);border:1px solid rgba(255,78,78,.3);border-radius:8px;padding:6px 10px;color:var(--danger);font-size:12px;font-weight:700;cursor:pointer">Sign Out</button>` : ''}
+      </div>`;
+  }
+}
+function renameCustomCat(id){
+  const c = customCategories.find(x => x.id === id);
+  if (!c) return;
+  const newLabel = prompt('Rename category:', c.label);
+  if (!newLabel || newLabel.trim() === c.label) return;
+  c.label = newLabel.trim();
+  save();
+  renderSettingsExtras();
+  if (activeView === 'list') render();
+  if (activeView === 'forecast') renderForecast();
+}
+window.renameCustomCat = renameCustomCat;
+function deleteCustomCat(id){
+  const c = customCategories.find(x => x.id === id);
+  if (!c) return;
+  const inUse = payments.filter(p => p.cat === id).length;
+  if (inUse > 0) {
+    if (!confirm(`"${c.label}" is used by ${inUse} payment${inUse===1?'':'s'}. Delete anyway? Affected payments will move to Other.`)) return;
+    payments.forEach(p => { if (p.cat === id) p.cat = 'custom'; });
+  } else {
+    if (!confirm(`Delete category "${c.label}"?`)) return;
+  }
+  customCategories = customCategories.filter(x => x.id !== id);
+  save();
+  renderSettingsExtras();
+  if (activeView === 'list') render();
+  if (activeView === 'forecast') renderForecast();
+}
+window.deleteCustomCat = deleteCustomCat;
+async function forceResync(){
+  if (!_db || !_familyCode) { alert('Not signed in.'); return; }
+  try {
+    const snap = await getDoc(doc(_db, 'households', _familyCode, 'data', 'main'));
+    if (snap.exists()) applyCloudData(snap.data());
+    alert('Re-synced from cloud.');
+  } catch(e) { alert('Re-sync failed: ' + e.message); }
+}
+window.forceResync = forceResync;
+function clearLocalCache(){
+  if (!confirm('Clear all locally cached data and reload? Cloud data is not affected — it will redownload.')) return;
+  Object.keys(localStorage).filter(k => k.startsWith('bgt_')).forEach(k => localStorage.removeItem(k));
+  location.reload();
+}
+window.clearLocalCache = clearLocalCache;
 function renderExport(){
   renderNotifPrefs();
+  renderSettingsExtras();
+  renderSinkingFunds();
   const now=today(), monthly=payments.filter(p=>!p.onetime);
   const fixed=monthly.reduce((s,p)=>s+p.amount,0);
   const total=fixed+grocery+recreation+clothes+restaurant+other2;
@@ -3884,6 +4017,7 @@ window.clearSearch       = clearSearch;
 window.changeSpendingMonth = changeSpendingMonth;
 window.saveSpending      = saveSpending;
 window.openFundModal     = openFundModal;
+window.leaveHousehold    = leaveHousehold;
 window.saveFund          = saveFund;
 window.deleteFund        = deleteFund;
 window.addToFund         = addToFund;
