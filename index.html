@@ -812,6 +812,7 @@ canvas{width:100%!important;display:block;}
     <div class="fs-title">Backup &amp; Restore</div>
     <div class="fs-sub">Download a JSON snapshot of all your data. Keep this somewhere safe (iCloud Drive, email to yourself, etc.) — you can restore from it any time.</div>
     <button class="btn-submit" style="margin-bottom:8px;" onclick="downloadBackup()">💾 Download Backup (JSON)</button>
+    <button class="btn-cancel" style="margin-bottom:8px;" onclick="shareBackup()">📤 Share to Files / iCloud Drive…</button>
     <input type="file" id="restoreFile" accept="application/json" style="display:none" onchange="restoreBackup(this.files[0])">
     <button class="btn-cancel" style="margin-bottom:18px;" onclick="document.getElementById('restoreFile').click()">📂 Restore from JSON…</button>
 
@@ -2323,6 +2324,36 @@ function downloadBackup(){
   setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
 }
 window.downloadBackup = downloadBackup;
+async function shareBackup(){
+  const data = buildBackupPayload();
+  const stamp = new Date().toISOString().slice(0,10);
+  const filename = `budget-backup-${stamp}.json`;
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  let file;
+  try { file = new File([blob], filename, {type:'application/json'}); } catch(e) { file = null; }
+  // Prefer Web Share API with files (iOS share sheet → Save to Files → iCloud Drive)
+  if (file && navigator.canShare && navigator.canShare({files: [file]})) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: 'Budget Backup',
+        text: `Budget snapshot from ${stamp}`
+      });
+      // Track last successful share so we can use it for health checks later if useful
+      try { localStorage.setItem('bgt_last_shared_backup', new Date().toISOString()); } catch(e) {}
+    } catch(e) {
+      if (e && e.name !== 'AbortError') {
+        console.error('Share failed, falling back to download:', e);
+        downloadBackup();
+      }
+    }
+    return;
+  }
+  // Fallback: regular download
+  downloadBackup();
+  alert('This browser doesn\'t support sharing files — downloaded instead. On iPhone Safari, the share sheet usually appears.');
+}
+window.shareBackup = shareBackup;
 async function restoreBackup(file){
   if(!file) return;
   if(!confirm('Restore from this backup? This will REPLACE your current payments, budgets, spending, and other data with the backup contents. Your last download cannot be undone automatically.')) {
