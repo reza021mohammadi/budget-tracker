@@ -4163,7 +4163,18 @@ document.getElementById('bufferInput').value=bufferAmt||'';
 // Apply theme
 if(isLightMode){ document.body.classList.add('light-mode'); document.getElementById('themeBtn').textContent='☀️'; }
 // Notification button state
-if(typeof Notification!=='undefined' && Notification.permission==='granted'){ document.getElementById('notifBtn').textContent='🔔✅'; }
+// On iOS Safari PWA, Notification.permission sometimes resolves to 'default' on a
+// cold reload even when the user previously granted permission. Trust our own
+// stored flag too so the ✅ doesn't flicker off after a hard refresh.
+(function(){
+  const btn = document.getElementById('notifBtn');
+  if (!btn) return;
+  const sysGranted = typeof Notification !== 'undefined' && Notification.permission === 'granted';
+  const userEnabled = localStorage.getItem('bgt_notif') === '1';
+  const denied = typeof Notification !== 'undefined' && Notification.permission === 'denied';
+  if (sysGranted || (userEnabled && !denied)) btn.textContent = '🔔✅';
+  else if (denied) btn.textContent = '🔕';
+})();
 render();
 renderSpending();
 renderSinkingFunds();
