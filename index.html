@@ -3086,6 +3086,9 @@ function setBulkBarVisibility(){
   if (!bar) return;
   bar.style.display = selectionMode ? 'flex' : 'none';
   document.getElementById('bulkCountLabel').textContent = `${selectedIds.size} selected`;
+  // Hide the + FAB while bulk bar is visible so they don't overlap.
+  const fab = document.querySelector('.fab');
+  if (fab && activeView !== 'meals') fab.style.display = selectionMode ? 'none' : 'flex';
 }
 function enterSelectionMode(initialId){
   selectionMode = true;
