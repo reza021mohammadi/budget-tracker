@@ -202,7 +202,11 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .fs-title{font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:3px;}
 .fs-sub{font-size:11px;color:var(--muted);margin-bottom:13px;}
 .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:15px;padding:14px;margin-bottom:12px;}
-.chart-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;font-weight:600;margin-bottom:10px;}
+.chart-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;font-weight:600;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;gap:8px;}
+.chart-title::after{content:'▾';font-size:12px;transition:transform .2s;color:var(--muted);}
+.chart-card.collapsed .chart-title{margin-bottom:0;}
+.chart-card.collapsed .chart-title::after{transform:rotate(-90deg);}
+.chart-card.collapsed > *:not(.chart-title){display:none !important;}
 canvas{width:100%!important;display:block;}
 .chart-legend{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;}
 .legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);}
@@ -1887,6 +1891,24 @@ function renderForecast(){
   try { drawDebtChart(); } catch(e) { console.error('drawDebtChart failed:',e); }
   drawDonut(data[0]); renderMonthCards(data); renderActualChart();
   try { drawSpendingTrends(); } catch(e) { console.error('drawSpendingTrends failed:', e); }
+  applyChartCollapseState();
+}
+const collapsedCharts = new Set(JSON.parse(localStorage.getItem('bgt_collapsed_charts')||'[]'));
+function applyChartCollapseState(){
+  document.querySelectorAll('#view-forecast .chart-card').forEach(card => {
+    const title = card.querySelector('.chart-title');
+    if (!title) return;
+    const key = title.textContent.trim();
+    card.classList.toggle('collapsed', collapsedCharts.has(key));
+    if (title.dataset.collapseBound) return;
+    title.addEventListener('click', () => {
+      if (collapsedCharts.has(key)) collapsedCharts.delete(key);
+      else collapsedCharts.add(key);
+      localStorage.setItem('bgt_collapsed_charts', JSON.stringify([...collapsedCharts]));
+      card.classList.toggle('collapsed');
+    });
+    title.dataset.collapseBound = '1';
+  });
 }
 function drawSpendingTrends(){
   const canvas = document.getElementById('spendingTrendsChart');
