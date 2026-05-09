@@ -854,8 +854,8 @@ canvas{width:100%!important;display:block;}
       <button onclick="setTheme('light')" data-theme="light" class="theme-opt" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer">☀️ Light</button>
     </div>
 
-    <div class="fs-title">🏷 Custom Categories</div>
-    <div class="fs-sub">Categories you've added beyond the defaults. Tap to rename or delete.</div>
+    <div class="fs-title">🏷 Payments Categories</div>
+    <div class="fs-sub">All payment categories — built-in and custom. Renaming updates them everywhere in the app.</div>
     <div id="customCatList" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:18px;display:flex;flex-direction:column;gap:8px"></div>
 
     <div class="fs-title">🏦 Sinking Funds</div>
@@ -1269,6 +1269,7 @@ function applyCloudData(d) {
   if (d.bufferAmt!=null)  { bufferAmt   = d.bufferAmt;   localStorage.setItem('bgt_bf', d.bufferAmt); }
   if (d.notifPrefs && typeof d.notifPrefs === 'object') { notifPrefs = d.notifPrefs; localStorage.setItem('bgt_np', JSON.stringify(notifPrefs)); }
   if (typeof d.autoSetasidePct === 'number') { autoSetasidePct = d.autoSetasidePct; localStorage.setItem('bgt_asa', autoSetasidePct); }
+  if (d.builtInLabels && typeof d.builtInLabels === 'object') { builtInLabels = d.builtInLabels; localStorage.setItem('bgt_bil', JSON.stringify(builtInLabels)); }
   if (d.updatedBy && d.updatedAt) {
     const el = document.getElementById('updatedByLabel');
     const me = _auth && _auth.currentUser ? (_auth.currentUser.displayName || _auth.currentUser.email) : null;
@@ -1392,7 +1393,7 @@ async function saveToCloud() {
   setSyncBadge('syncing', '⏳ Saving…');
   try {
     await setDoc(doc(_db, 'households', _familyCode, 'data', 'main'), {
-      payments, monthlyBudgets, meals, mealLibrary, sinkingFunds, spending, customCategories, payday, savingsGoal, bufferAmt, notifPrefs, autoSetasidePct,
+      payments, monthlyBudgets, meals, mealLibrary, sinkingFunds, spending, customCategories, payday, savingsGoal, bufferAmt, notifPrefs, autoSetasidePct, builtInLabels,
       updatedAt: new Date().toISOString(),
       updatedBy: _auth && _auth.currentUser ? (_auth.currentUser.displayName || _auth.currentUser.email || 'Unknown') : 'Unknown'
     });
@@ -1656,10 +1657,22 @@ function catColor(c){
   const custom=customCategories.find(x=>x.id===c);
   return custom?custom.color:'';
 }
+const BUILTIN_CATS = [
+  {id:'o2',     defaultLabel:'O2 Installments', color:'#7c6fef'},
+  {id:'install',defaultLabel:'Installments',    color:'#f5a623'},
+  {id:'sub',    defaultLabel:'Subscriptions',   color:'#5b93ef'},
+  {id:'paypal', defaultLabel:'PayPal',          color:'#00b4d8'},
+  {id:'home',   defaultLabel:'Home',            color:'#3ecf8e'},
+  {id:'custom', defaultLabel:'Other',           color:'#c8f044'},
+];
+let builtInLabels = (() => { try { return JSON.parse(localStorage.getItem('bgt_bil')||'{}'); } catch(e){ return {}; } })();
 function catLabel(c){
+  if (builtInLabels[c]) return builtInLabels[c];
   const custom=customCategories.find(x=>x.id===c);
   if(custom) return custom.label;
-  return {o2:'O2',install:'Installments',sub:'Subscriptions',paypal:'PayPal',home:'Home',custom:'Other',grocery:'Groceries'}[c]||c;
+  const b = BUILTIN_CATS.find(x => x.id === c);
+  if (b) return b.defaultLabel;
+  return {grocery:'Groceries'}[c] || c;
 }
 function fmt(n){ return '€'+Math.abs(n).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
@@ -2438,11 +2451,11 @@ function drawDonut(d){
 
   // Build categories including custom ones
   const builtIn=[
-    {label:'O2',        color:'#7c6fef', val:payments.filter(p=>!p.onetime&&p.cat==='o2'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
-    {label:'Installm.', color:'#f5a623', val:payments.filter(p=>!p.onetime&&p.cat==='install'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
-    {label:'Subs',      color:'#5b93ef', val:payments.filter(p=>!p.onetime&&p.cat==='sub'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
-    {label:'PayPal',    color:'#00b4d8', val:payments.filter(p=>!p.onetime&&p.cat==='paypal'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
-    {label:'Home',      color:'#3ecf8e', val:payments.filter(p=>!p.onetime&&p.cat==='home'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
+    {label:catLabel('o2'),     color:'#7c6fef', val:payments.filter(p=>!p.onetime&&p.cat==='o2'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
+    {label:catLabel('install'),color:'#f5a623', val:payments.filter(p=>!p.onetime&&p.cat==='install'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
+    {label:catLabel('sub'),    color:'#5b93ef', val:payments.filter(p=>!p.onetime&&p.cat==='sub'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
+    {label:catLabel('paypal'), color:'#00b4d8', val:payments.filter(p=>!p.onetime&&p.cat==='paypal'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
+    {label:catLabel('home'),   color:'#3ecf8e', val:payments.filter(p=>!p.onetime&&p.cat==='home'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
     {label:'Grocery',   color:'#f5a623', val:grocery},
     {label:'Recreation',color:'#38bdf8', val:recreation},
     {label:'Clothes',   color:'#b57bee', val:clothes},
@@ -2597,20 +2610,36 @@ function renderSettingsExtras(){
     b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
     b.style.color = active ? 'var(--accent)' : 'var(--text)';
   });
-  // Custom categories list
+  // All categories — built-ins + customs (rename inline; delete only for customs)
   const ccBox = document.getElementById('customCatList');
   if (ccBox) {
-    if (!customCategories.length) {
-      ccBox.innerHTML = '<div style="font-size:12px;color:var(--muted)">No custom categories yet. Add one via the Add Payment modal.</div>';
-    } else {
-      ccBox.innerHTML = customCategories.map(c => `
+    const builtInRows = BUILTIN_CATS.map(b => {
+      const renamed = !!builtInLabels[b.id];
+      const usage = payments.filter(p => p.cat === b.id).length;
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--surface2);border-radius:8px">
+          <span style="width:10px;height:10px;border-radius:50%;background:${b.color};flex-shrink:0"></span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${catLabel(b.id)} <span style="opacity:.55;font-size:11px;font-weight:500;margin-left:4px">· ${usage}</span></div>
+            ${renamed?`<div style="font-size:10px;color:var(--muted);margin-top:1px">default: ${b.defaultLabel}</div>`:''}
+          </div>
+          <button onclick="renameCategory('${b.id}')" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer">Rename</button>
+          ${renamed?`<button onclick="resetCategoryName('${b.id}')" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer">Reset</button>`:''}
+        </div>`;
+    }).join('');
+    const customRows = customCategories.map(c => {
+      const usage = payments.filter(p => p.cat === c.id).length;
+      return `
         <div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--surface2);border-radius:8px">
           <span style="width:10px;height:10px;border-radius:50%;background:${c.color};flex-shrink:0"></span>
-          <span style="flex:1;font-size:13px;color:var(--text)">${c.label}</span>
-          <button onclick="renameCustomCat('${c.id}')"  style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer">Rename</button>
-          <button onclick="deleteCustomCat('${c.id}')"  style="background:rgba(255,78,78,.1);border:1px solid rgba(255,78,78,.3);border-radius:6px;padding:4px 8px;color:var(--danger);font-size:11px;cursor:pointer">Delete</button>
-        </div>`).join('');
-    }
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.label} <span style="opacity:.55;font-size:11px;font-weight:500;margin-left:4px">· ${usage}</span></div>
+          </div>
+          <button onclick="renameCategory('${c.id}')" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:11px;cursor:pointer">Rename</button>
+          <button onclick="deleteCustomCat('${c.id}')" style="background:rgba(255,78,78,.1);border:1px solid rgba(255,78,78,.3);border-radius:6px;padding:4px 8px;color:var(--danger);font-size:11px;cursor:pointer">Delete</button>
+        </div>`;
+    }).join('');
+    ccBox.innerHTML = builtInRows + customRows + `<div style="font-size:11px;color:var(--muted);margin-top:4px">Add a new category from the Add Payment modal.</div>`;
   }
   // Account box
   const acc = document.getElementById('accountBox');
@@ -2627,18 +2656,38 @@ function renderSettingsExtras(){
       </div>`;
   }
 }
-function renameCustomCat(id){
-  const c = customCategories.find(x => x.id === id);
-  if (!c) return;
-  const newLabel = prompt('Rename category:', c.label);
-  if (!newLabel || newLabel.trim() === c.label) return;
-  c.label = newLabel.trim();
+function renameCategory(id){
+  const isBuiltIn = BUILTIN_CATS.some(b => b.id === id);
+  const isCustom  = customCategories.some(c => c.id === id);
+  if (!isBuiltIn && !isCustom) return;
+  const current = catLabel(id);
+  const newLabel = prompt('Rename category:', current);
+  if (!newLabel || newLabel.trim() === current) return;
+  if (isCustom) {
+    const c = customCategories.find(x => x.id === id);
+    if (c) c.label = newLabel.trim();
+  } else {
+    builtInLabels[id] = newLabel.trim();
+    localStorage.setItem('bgt_bil', JSON.stringify(builtInLabels));
+  }
   save();
   renderSettingsExtras();
+  populateCategorySelect();
   if (activeView === 'list') render();
   if (activeView === 'forecast') renderForecast();
 }
-window.renameCustomCat = renameCustomCat;
+window.renameCategory = renameCategory;
+function resetCategoryName(id){
+  if (!builtInLabels[id]) return;
+  delete builtInLabels[id];
+  localStorage.setItem('bgt_bil', JSON.stringify(builtInLabels));
+  save();
+  renderSettingsExtras();
+  populateCategorySelect();
+  if (activeView === 'list') render();
+  if (activeView === 'forecast') renderForecast();
+}
+window.resetCategoryName = resetCategoryName;
 function deleteCustomCat(id){
   const c = customCategories.find(x => x.id === id);
   if (!c) return;
@@ -2698,7 +2747,7 @@ function buildBackupPayload(){
   return {
     version: 1,
     exportedAt: new Date().toISOString(),
-    payday, savingsGoal, bufferAmt,
+    payday, savingsGoal, bufferAmt, autoSetasidePct, notifPrefs, builtInLabels,
     payments, monthlyBudgets, spending, customCategories,
     meals, mealLibrary, sinkingFunds
   };
@@ -2766,6 +2815,12 @@ async function restoreBackup(file){
     if(typeof d.payday === 'number')      payday           = d.payday;
     if(typeof d.savingsGoal === 'number') savingsGoal      = d.savingsGoal;
     if(typeof d.bufferAmt === 'number')   bufferAmt        = d.bufferAmt;
+    if(typeof d.autoSetasidePct === 'number') autoSetasidePct = d.autoSetasidePct;
+    if(d.notifPrefs && typeof d.notifPrefs === 'object') notifPrefs = d.notifPrefs;
+    if(d.builtInLabels && typeof d.builtInLabels === 'object'){
+      builtInLabels = d.builtInLabels;
+      localStorage.setItem('bgt_bil', JSON.stringify(builtInLabels));
+    }
     nextId = Math.max(...payments.map(p=>p.id||0),0)+1;
     syncBudgetVars();
     save(); render(); if(activeView==='forecast') renderForecast();
@@ -2940,7 +2995,12 @@ function onCategoryChange(sel) {
 
 function populateCategorySelect() {
   const sel = document.getElementById('fCategory');
-  // Keep built-in options, remove old custom ones first
+  // Refresh built-in option labels in case the user renamed them in Settings
+  BUILTIN_CATS.forEach(b => {
+    const opt = Array.from(sel.options).find(o => o.value === b.id);
+    if (opt) opt.textContent = catLabel(b.id);
+  });
+  // Remove old custom options
   Array.from(sel.options).filter(o=>o.dataset.custom).forEach(o=>o.remove());
   // Insert custom categories before the "Other" option
   const otherIdx = Array.from(sel.options).findIndex(o=>o.value==='custom');
