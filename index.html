@@ -83,6 +83,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 /* Buffer warning banner */
 .buffer-warning{background:rgba(255,78,78,0.1);border:1px solid rgba(255,78,78,0.3);border-radius:12px;padding:10px 13px;margin:10px 16px 0;display:none;align-items:center;gap:8px;font-size:12px;color:var(--danger);}
 .buffer-warning.show{display:flex;}
+.backup-warning{background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.3);border-radius:12px;padding:10px 13px;margin:10px 16px 0;display:none;align-items:center;gap:8px;font-size:12px;color:var(--orange);}
+.backup-warning.show{display:flex;}
+.backup-warning .close-btn{margin-left:auto;background:none;border:none;color:var(--orange);font-size:16px;cursor:pointer;padding:0 4px;}
 
 /* Payday countdown */
 .payday-countdown{background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:9px 13px;margin-top:9px;display:flex;align-items:center;justify-content:space-between;}
@@ -518,6 +521,10 @@ canvas{width:100%!important;display:block;}
 <!-- ══ BUFFER WARNING ══ -->
 <div class="buffer-warning" id="bufferWarning">
   ⚠️ <span id="bufferMsg">Remaining is below your buffer threshold.</span>
+</div>
+<div class="backup-warning" id="backupWarning">
+  💾 <span id="backupMsg">No recent backup.</span>
+  <button class="close-btn" onclick="document.getElementById('backupWarning').classList.remove('show')">×</button>
 </div>
 
 <!-- Global month navigator — visible across Overview / Forecast / Payments -->
@@ -1212,7 +1219,7 @@ function startRealtimeSync() {
       const wasFirstSync = !_firstSyncDone;
       _firstSyncDone = true;
       setSyncBadge('synced', '✅ Synced');
-      if (wasFirstSync) autoCloudBackup();
+      if (wasFirstSync) { checkBackupHealth(); autoCloudBackup(); }
     },
     (err) => {
       setSyncBadge('offline', '🔴 Offline');
@@ -2352,6 +2359,31 @@ async function restoreBackup(file){
 window.restoreBackup = restoreBackup;
 // Daily auto-backup: when the cloud document loads, write a snapshot doc per day (keep last 7).
 let _autoBackupDoneToday = false;
+async function checkBackupHealth(){
+  if(!_db || !_familyCode) return;
+  try {
+    const snap = await getDocs(collection(_db, 'households', _familyCode, 'backups'));
+    const banner = document.getElementById('backupWarning');
+    const msg = document.getElementById('backupMsg');
+    if (!banner || !msg) return;
+    const todayKey = new Date().toISOString().slice(0,10);
+    const dates = snap.docs.map(d => d.id).sort().reverse();
+    if (dates.length === 0) {
+      msg.textContent = 'No automatic backup yet — one is being created now. Open the app daily to keep history.';
+      banner.classList.add('show');
+      return;
+    }
+    const latest = dates[0];
+    if (latest === todayKey) { banner.classList.remove('show'); return; }
+    const daysAgo = Math.floor((new Date(todayKey) - new Date(latest)) / 864e5);
+    if (daysAgo >= 3) {
+      msg.textContent = `Last automatic backup was ${daysAgo} days ago. Tap Export → Download Backup to save a manual snapshot.`;
+      banner.classList.add('show');
+    } else {
+      banner.classList.remove('show');
+    }
+  } catch(e) { console.warn('backup health check failed:', e); }
+}
 async function autoCloudBackup(){
   if(!_db || !_familyCode || !_firstSyncDone) return;
   if(_autoBackupDoneToday) return;
