@@ -626,6 +626,14 @@ canvas{width:100%!important;display:block;}
         </div>
       </div>
     </div>
+    <!-- Smart Insights (auto-populated) -->
+    <div class="summary-card c-savings full-width collapsible" id="insightsCard" onclick="toggleEditCard(this,event)" style="display:none">
+      <div class="card-label">💡 Insights</div>
+      <div id="insightsHint" style="font-size:13px;color:var(--muted);margin-top:4px"></div>
+      <div class="card-detail">
+        <div id="insightsList" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
+      </div>
+    </div>
     <!-- Remaining -->
     <div class="summary-card c-remaining full-width collapsible" onclick="toggleEditCard(this,event)">
       <div class="card-label">Remaining This Month</div>
@@ -1646,6 +1654,149 @@ function switchView(v,el){
 }
 
 // ════════ RENDER OVERVIEW ════════
+// ════════ SMART INSIGHTS ════════
+function renderSmartInsights(ctx){
+  const card = document.getElementById('insightsCard');
+  const list = document.getElementById('insightsList');
+  const hint = document.getElementById('insightsHint');
+  if (!card || !list) return;
+  const items = [];
+  const today = new Date();
+  const y = budgetMonth.year, m = budgetMonth.month;
+  const {fixed, total, rem, savingsPct, activeMonthly, onetimeThisMonth} = ctx;
+
+  // 1. Installment ending soon — within 6 months
+  const endingSoon = payments
+    .filter(p => p.isDebt && !p.onetime && parseEndDate(p.endDate))
+    .map(p => {
+      const e = parseEndDate(p.endDate);
+      const months = (e.getFullYear()-y)*12 + (e.getMonth()-m);
+      return { p, e, months };
+    })
+    .filter(x => x.months >= 0 && x.months <= 6)
+    .sort((a,b) => a.months - b.months);
+  endingSoon.slice(0, 2).forEach(({p, e, months}) => {
+    items.push({
+      icon: '💚',
+      priority: 1,
+      text: `<b>${p.name}</b> ends in ${months===0?'this month':months+' month'+(months===1?'':'s')}, freeing ${fmt(p.amount)}/mo from ${e.toLocaleDateString('en-DE',{month:'short',year:'numeric'})}.`
+    });
+  });
+
+  // 2. Heaviest forecast month
+  const forecastData = (function(){
+    try { return buildForecast(); } catch(e) { return []; }
+  })();
+  if (forecastData.length) {
+    const heaviest = forecastData.reduce((a,b) => b.total > a.total ? b : a, forecastData[0]);
+    if (heaviest && !heaviest.isCurrent && heaviest.total > forecastData[0].total * 1.1) {
+      items.push({
+        icon: '🔥',
+        priority: 2,
+        text: `<b>${heaviest.label}</b> is your heaviest upcoming month at ${fmt(heaviest.total)} (${(((heaviest.total/forecastData[0].total)-1)*100).toFixed(0)}% above this month).`
+      });
+    }
+  }
+
+  // 3. Optional payments cancellation savings
+  const optionalTotal = activeMonthly.filter(p => p.tag === 'optional').reduce((s,p)=>s+p.amount,0);
+  if (optionalTotal > 0) {
+    const pctOfIncome = netIncome > 0 ? (optionalTotal/netIncome*100).toFixed(0) : '0';
+    items.push({
+      icon: '✨',
+      priority: 3,
+      text: `Cancelling all <b>Optional</b> payments would save ${fmt(optionalTotal)}/mo (${pctOfIncome}% of income).`
+    });
+  }
+
+  // 4. Spending category overage (current month actuals)
+  const spKey = budgetKey(y, m);
+  const sp = spending[spKey] || {};
+  const catCheck = [
+    {id:'groceries', label:'Groceries', budget: grocery},
+    {id:'recreation', label:'Recreation', budget: recreation},
+    {id:'clothes', label:'Clothes', budget: clothes},
+    {id:'restaurant', label:'Restaurant/Cafe', budget: restaurant},
+    {id:'other2', label:'Other', budget: other2},
+  ];
+  catCheck.forEach(c => {
+    const actual = +sp[c.id] || 0;
+    if (c.budget > 0 && actual > c.budget * 1.2) {
+      items.push({
+        icon: '⚠️',
+        priority: 2,
+        text: `<b>${c.label}</b> is ${fmt(actual-c.budget)} over budget (+${(((actual/c.budget)-1)*100).toFixed(0)}%).`
+      });
+    }
+  });
+
+  // 5. Savings rate boost suggestion
+  if (savingsPct >= 15 && (autoSetasidePct||0) < Math.floor(savingsPct/2)) {
+    const suggested = Math.floor(savingsPct / 2);
+    items.push({
+      icon: '💰',
+      priority: 3,
+      text: `You're saving <b>${savingsPct.toFixed(0)}%</b>. Consider raising your auto-set-aside to ${suggested}% to lock in long-term savings.`
+    });
+  }
+
+  // 6. Buffer / overspend warning
+  if (rem < 0) {
+    items.push({
+      icon: '🚨',
+      priority: 1,
+      text: `Total costs exceed income by <b>${fmt(Math.abs(rem))}</b>.`
+    });
+  } else if (bufferAmt > 0 && rem < bufferAmt) {
+    items.push({
+      icon: '⚠️',
+      priority: 1,
+      text: `Remaining ${fmt(rem)} is below your buffer of ${fmt(bufferAmt)} by ${fmt(bufferAmt-rem)}.`
+    });
+  }
+
+  // 7. Pay-cycle heaviness
+  const cycleEnd = nextOcc(payday);
+  const cycleAmount = payments.reduce((s,p) => {
+    const nx = nextDateForPayment(p);
+    if (!nx || nx > cycleEnd) return s;
+    if (!p.onetime && !isActiveInMonth(p, nx.getFullYear(), nx.getMonth())) return s;
+    return s + p.amount;
+  }, 0);
+  if (netIncome > 0 && cycleAmount > netIncome * 0.4) {
+    items.push({
+      icon: '💸',
+      priority: 2,
+      text: `This pay cycle has <b>${fmt(cycleAmount)}</b> due — ${((cycleAmount/netIncome)*100).toFixed(0)}% of your monthly income.`
+    });
+  }
+
+  // 8. Subscription-heavy reminder
+  const subsTotal = activeMonthly.filter(p => p.cat === 'sub').reduce((s,p)=>s+p.amount,0);
+  if (subsTotal > netIncome * 0.1 && netIncome > 0) {
+    const subsCount = activeMonthly.filter(p => p.cat === 'sub').length;
+    items.push({
+      icon: '📺',
+      priority: 4,
+      text: `<b>${subsCount} subscriptions</b> total ${fmt(subsTotal)}/mo — ${((subsTotal/netIncome)*100).toFixed(0)}% of income.`
+    });
+  }
+
+  if (items.length === 0) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = '';
+  // Sort by priority asc, take top 5
+  items.sort((a,b) => a.priority - b.priority);
+  const top = items.slice(0, 5);
+  hint.textContent = `${top.length} actionable insight${top.length===1?'':'s'}${items.length>top.length?' · tap to expand':''}`;
+  list.innerHTML = top.map(it => `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;font-size:12.5px;line-height:1.5">
+      <span style="font-size:16px;line-height:1;flex-shrink:0">${it.icon}</span>
+      <span style="color:var(--text)">${it.text}</span>
+    </div>`).join('');
+}
 function render(){
   syncBudgetVars();
   const now=today(), monthly=payments.filter(p=>!p.onetime);
@@ -1792,6 +1943,8 @@ function render(){
   document.getElementById('upcomingList').innerHTML=up.length===0?'<div class="upcoming-empty">Nothing due in 7 days 🎉</div>':
     up.map(p=>`<div class="upcoming-item"><div class="upi-left"><div class="upi-dot ${catDot(p.cat)}"></div><span class="upi-name">${p.name}</span><span class="upi-badge">${p.daysUntil===0?'Today':p.daysUntil===1?'Tomorrow':(p.onetime&&p._nextDate?p._nextDate.toLocaleDateString('en-DE',{day:'numeric',month:'short'}):'Day '+p.day)}</span></div><span class="upi-amount">${fmt(p.amount)}</span></div>`).join('');
 
+  // Smart insights — auto-derived suggestions based on current data
+  renderSmartInsights({fixed,total,rem,savingsPct,activeMonthly,onetimeThisMonth});
   // Range pills — group both recurring and one-time payments by their day-of-month
   const rt={'1':0,'2':0,'3':0,'4':0};
   fixedAll.forEach(p=>{
