@@ -36,11 +36,21 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .view{display:none;}.view.active{display:block;}
 
 /* CARDS */
-.summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 16px 0;}
-.summary-row .summary-card:not(.full-width){padding:11px 9px;}
-.summary-row .summary-card:not(.full-width) .card-label{font-size:9px;}
-.summary-row .summary-card:not(.full-width) .card-value{font-size:18px;}
-.summary-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px;position:relative;overflow:hidden;}
+.summary-row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;padding:14px 16px 0;}
+.summary-row .summary-card{grid-column:span 2;padding:10px 9px;}
+.summary-row .summary-card.full-width{grid-column:1/-1;}
+.summary-row .summary-card.half-row{grid-column:span 3;}
+.summary-row .summary-card:not(.full-width):not(.half-row) .card-label{font-size:9px;}
+.summary-row .summary-card:not(.full-width):not(.half-row) .card-value{font-size:18px;}
+.summary-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 13px;position:relative;overflow:hidden;}
+.summary-row .summary-card.full-width{padding:11px 14px;}
+.summary-row .summary-card.full-width .card-label{font-size:10px;}
+.summary-row .summary-card.full-width .card-value{font-size:22px;margin-top:3px;}
+.summary-row .summary-card.full-width .card-sub{font-size:11px;margin-top:3px;}
+.summary-row .summary-card.half-row{padding:10px 11px;}
+.summary-row .summary-card.half-row .card-label{font-size:9px;}
+.summary-row .summary-card.half-row .card-value{font-size:18px;margin-top:3px;}
+.summary-row .summary-card.half-row .card-sub{font-size:10px;margin-top:2px;}
 .summary-card.collapsible{cursor:pointer;}
 .card-value.inline-edit{cursor:text;outline:none;border-radius:8px;padding:2px 4px;margin-left:-4px;transition:background .15s;}
 .card-value.inline-edit:focus{background:rgba(200,240,68,.08);}
@@ -651,14 +661,14 @@ canvas{width:100%!important;display:block;}
       </div>
     </div>
     <!-- Pay-cycle -->
-    <div class="summary-card c-cycle full-width" onclick="toggleCycleCard()" style="cursor:pointer;">
+    <div class="summary-card c-cycle half-row" onclick="toggleCycleCard()" style="cursor:pointer;">
       <div class="card-label">⚡ This Pay Cycle</div>
       <div class="card-value cv-cycle" id="cycleTotal">€0</div>
       <div class="card-sub" id="cycleRange"></div>
       <div id="cycleCards" style="display:none;"></div>
     </div>
     <!-- Upcoming 7 days -->
-    <div class="summary-card c-upcoming full-width" onclick="toggleUpcomingCard()" style="cursor:pointer;">
+    <div class="summary-card c-upcoming half-row" onclick="toggleUpcomingCard()" style="cursor:pointer;">
       <div class="card-label">📅 Due Next 7 Days</div>
       <div class="card-value cv-upcoming" id="upcomingTotal">€0</div>
       <div class="upcoming-list" id="upcomingList" style="display:none;"></div>
