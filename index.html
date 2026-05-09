@@ -3108,6 +3108,7 @@ function toggleSelected(id){
   setBulkBarVisibility();
   render();
 }
+window.toggleSelected = toggleSelected;
 function bulkAction(action){
   const ids = [...selectedIds];
   if (ids.length === 0) { exitSelectionMode(); return; }
