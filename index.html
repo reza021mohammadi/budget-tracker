@@ -944,7 +944,16 @@ canvas{width:100%!important;display:block;}
       <div class="form-group"><label class="form-label">End Date (optional)</label><input class="form-input" id="fEndDate" type="date"></div>
     </div>
     <div class="form-group"><label class="form-label">Note (optional)</label><textarea class="form-textarea" id="fNote" placeholder="e.g. shared with partner, cancel if needed…"></textarea></div>
-    <div class="form-group"><label class="checkbox-row"><input type="checkbox" id="fOnetime"><span class="checkbox-label">🔴 One-time payment (not monthly)</span></label></div>
+    <div class="form-group"><label class="form-label">Frequency</label>
+      <select class="form-select" id="fFrequency">
+        <option value="monthly" selected>Monthly</option>
+        <option value="bimonthly">Every 2 months</option>
+        <option value="quarterly">Quarterly (every 3 months)</option>
+        <option value="yearly">Yearly</option>
+      </select>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">For non-monthly, set Start Date — it anchors which months the payment hits.</div>
+    </div>
+    <div class="form-group"><label class="checkbox-row"><input type="checkbox" id="fOnetime"><span class="checkbox-label">🔴 One-time payment (overrides frequency)</span></label></div>
     <div class="form-group"><label class="checkbox-row"><input type="checkbox" id="fDebt"><span class="checkbox-label">💳 Count as debt (include in debt payoff timeline)</span></label></div>
     <button class="btn-submit" id="paymentSubmitBtn" onclick="addPayment()">Add Payment</button>
     <button class="btn-cancel" onclick="closeModal()">Cancel</button>
@@ -1430,10 +1439,20 @@ function parseEndDate(s){
 function isActiveInMonth(p,y,m){
   if(p.onetime) return false;
   const monthEnd=new Date(y,m+1,0);
+  const monthStart=new Date(y,m,1);
   const s=parseEndDate(p.startDate);
   if(s&&s>monthEnd) return false;
   const e=parseEndDate(p.endDate);
-  return !e || e>=new Date(y,m,1);
+  if(e && e<monthStart) return false;
+  // Frequency check — non-monthly only hits on certain months from the start anchor.
+  const freq = p.frequency || 'monthly';
+  if (freq === 'monthly') return true;
+  if (!s) return true; // no anchor — treat like monthly
+  const sy = s.getFullYear(), sm = s.getMonth();
+  const monthsSinceStart = (y - sy) * 12 + (m - sm);
+  if (monthsSinceStart < 0) return false;
+  const interval = freq === 'yearly' ? 12 : freq === 'quarterly' ? 3 : freq === 'bimonthly' ? 2 : 1;
+  return monthsSinceStart % interval === 0;
 }
 // True if a one-time payment is scheduled inside the given month
 function isOnetimeInMonth(p,y,m){
@@ -1740,7 +1759,7 @@ function renderList(monthly, up){
         <div class="pd ${catDot(cat)}" style="${catColor(cat)?'background:'+catColor(cat)+';':''}"></div>
         <div class="pi" onclick="openEditModal(${p.id})" style="cursor:pointer">
           <div class="pi-name">${p.name}${p.onetime?'<span class="badge b-onetime">1×</span>':''}${upIds.has(p.id)?'<span class="badge b-due">Due</span>':''}${archived?`<span class="b-ended">Ended ${p.endDate||''}</span>`:''}</div>
-          <div class="pi-meta">${p.onetime?(p.onetimeDate||''):'Ends: '+p.endDate}</div>
+          <div class="pi-meta">${p.onetime?(p.onetimeDate||''):((p.frequency&&p.frequency!=='monthly'?({yearly:'Yearly',quarterly:'Quarterly',bimonthly:'Every 2 mo'}[p.frequency]||'')+' · ':'')+'Ends: '+p.endDate)}</div>
           ${p.note?`<div class="pi-note">💬 ${p.note}</div>`:''}
         </div>
         <div class="pr" onclick="openEditModal(${p.id})" style="cursor:pointer"><div class="pr-amount">${fmt(p.amount)}</div><div class="pr-day">${p.onetime?'':'Day '+p.day}</div></div>
@@ -2189,6 +2208,7 @@ function closeModal(){
   ['fName','fAmount','fDay','fStartDate','fEndDate','fNote','newCategoryInput'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fOnetime').checked=false;
   document.getElementById('fDebt').checked=false;
+  document.getElementById('fFrequency').value='monthly';
   document.getElementById('fTag').value='';
   document.getElementById('newCategoryWrap').style.display='none';
   document.getElementById('fCategory').value='sub';
@@ -2265,6 +2285,7 @@ function openEditModal(id){
   document.getElementById('fNote').value=p.note||'';
   document.getElementById('fOnetime').checked=!!p.onetime;
   document.getElementById('fDebt').checked=!!p.isDebt;
+  document.getElementById('fFrequency').value=p.frequency||'monthly';
   document.getElementById('modalOverlay').classList.add('open');
 }
 window.openEditModal=openEditModal;
@@ -2279,6 +2300,7 @@ function addPayment(){
   const note=document.getElementById('fNote').value.trim();
   const onetime=document.getElementById('fOnetime').checked;
   const isDebt=document.getElementById('fDebt').checked;
+  const frequency=document.getElementById('fFrequency').value || 'monthly';
   if(!name||isNaN(amount)||amount<=0){alert('Please enter a name and amount.');return;}
   if(!onetime&&(isNaN(day)||day<1||day>31)){alert('Please enter a valid day (1–31).');return;}
   // Handle new custom category
@@ -2296,7 +2318,7 @@ function addPayment(){
       cat=newId;
     }
   }
-  const payload={name,amount,day:onetime?1:day,cat,tag,note,onetime,isDebt,
+  const payload={name,amount,day:onetime?1:day,cat,tag,note,onetime,isDebt,frequency,
     startDate:startDate?new Date(startDate).toLocaleDateString('en-GB'):'',
     endDate:endDate?new Date(endDate).toLocaleDateString('en-GB'):'ongoing',
     onetimeDate:endDate?new Date(endDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''};
