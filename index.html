@@ -46,6 +46,26 @@ body{padding-bottom:62px;}
 .summary-row .summary-card:not(.full-width):not(.half-row) .card-value{font-size:18px;}
 .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 13px;position:relative;overflow:hidden;}
 
+/* ════════ SKELETON LOADERS ════════ */
+@keyframes skel-shimmer { 0% { background-position: -180% 0; } 100% { background-position: 180% 0; } }
+.skel{
+  display:inline-block;
+  background:linear-gradient(90deg, var(--surface2) 0%, rgba(255,255,255,.08) 50%, var(--surface2) 100%);
+  background-size:200% 100%;
+  animation:skel-shimmer 1.4s infinite;
+  border-radius:6px;
+  color:transparent !important;
+  user-select:none;
+  pointer-events:none;
+}
+.is-loading-cards .card-value{position:relative;}
+.is-loading-cards .card-value::after{
+  content:'';position:absolute;inset:2px 6px;border-radius:6px;
+  background:linear-gradient(90deg, var(--surface2) 0%, rgba(255,255,255,.08) 50%, var(--surface2) 100%);
+  background-size:200% 100%;
+  animation:skel-shimmer 1.4s infinite;
+}
+
 /* ════════ TOAST NOTIFICATIONS ════════ */
 .toast-stack{position:fixed;left:0;right:0;bottom:90px;z-index:1000;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
 .toast{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 16px;font-size:13px;color:var(--text);box-shadow:0 6px 20px rgba(0,0,0,.35);opacity:0;transform:translateY(16px);transition:all .25s ease;max-width:88vw;text-align:center;pointer-events:auto;}
@@ -77,18 +97,8 @@ body{padding-bottom:62px;}
 .summary-card.collapsible .card-detail{display:none;}
 .summary-card.collapsible.expanded .card-detail{display:block;}
 .summary-card.full-width,.summary-card.span-full{grid-column:1/-1;}
-.summary-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
-.summary-card.c-income::before{background:var(--green);}
-.summary-card.c-grocery::before{background:var(--orange);}
-.summary-card.c-recreation::before{background:var(--teal);}
-.summary-card.c-clothes::before{background:var(--purple);}
-.summary-card.c-restaurant::before{background:#f472b6;}
-.summary-card.c-other2::before{background:var(--muted);}
-.summary-card.c-costs::before{background:var(--danger);}
-.summary-card.c-remaining::before{background:var(--accent);}
-.summary-card.c-savings::before{background:var(--purple);}
-.summary-card.c-upcoming::before{background:var(--yellow);}
-.summary-card.c-cycle::before{background:var(--teal);}
+/* Card categories are color-coded via the value text alone; the
+   redundant top accent bar has been removed for a unified look. */
 .card-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;font-weight:600;}
 .card-value{font-family:'DM Serif Display',serif;font-size:24px;margin-top:5px;line-height:1;}
 .card-value.cv-income{color:var(--green);}
@@ -243,7 +253,7 @@ body{padding-bottom:62px;}
 #view-export #notifPrefsBox{padding:9px 11px !important;margin-bottom:10px !important;border-radius:10px !important;}
 #view-export #notifPrefsBox label{font-size:12px !important;}
 #view-export button{font-size:11px !important;}
-.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:15px;padding:14px;margin-bottom:12px;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;}
 .chart-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;font-weight:600;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;gap:8px;}
 .chart-title::after{content:'▾';font-size:12px;transition:transform .2s;color:var(--muted);}
 .chart-card.collapsed .chart-title{margin-bottom:0;}
@@ -1315,6 +1325,7 @@ function startRealtimeSync() {
       if (snap.exists()) applyCloudData(snap.data());
       const wasFirstSync = !_firstSyncDone;
       _firstSyncDone = true;
+      if (wasFirstSync) document.body.classList.remove('is-loading-cards');
       setSyncBadge('synced', '✅ Synced');
       if (wasFirstSync) { checkBackupHealth(); autoCloudBackup(); }
     },
@@ -4241,6 +4252,12 @@ document.getElementById('joinHouseholdBtn').addEventListener('click', async () =
 });
 
 attachInlineEditHandlers();
+// Show skeleton placeholders over card values until first cloud sync resolves.
+// Only when there's no localStorage data yet (truly cold boot) — for returning
+// users we already have the cached values to render instantly.
+if (!localStorage.getItem('bgt_p')) document.body.classList.add('is-loading-cards');
+// Safety: drop the skeleton after 6s even if sync hangs, so the UI never sticks.
+setTimeout(() => document.body.classList.remove('is-loading-cards'), 6000);
 // INIT — render from localStorage FIRST so page is never blank
 document.getElementById('bufferInput').value=bufferAmt||'';
 // Apply theme
