@@ -1864,7 +1864,8 @@ function render(){
 
   // Header
   document.getElementById('headerDate').textContent=now.toLocaleDateString('en-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  document.getElementById('paydayDisplay').textContent=payday;
+  const _pdEl = document.getElementById('paydayDisplay');
+  if (_pdEl) _pdEl.textContent = payday;
   document.getElementById('incomeDisplay').textContent=fmt(netIncome);
   document.getElementById('groceryDisplay').textContent=fmt(grocery);
   document.getElementById('recreationDisplay').textContent=fmt(recreation);
