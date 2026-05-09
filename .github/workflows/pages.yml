@@ -2,7 +2,7 @@ name: Deploy Pages
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -20,22 +20,11 @@ jobs:
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
-        with:
-          ref: main
-          path: main-content
-
-      - name: Checkout develop
-        uses: actions/checkout@v4
-        with:
-          ref: develop
-          path: develop-content
 
       - name: Assemble site
         run: |
           mkdir -p site
-          rsync -a --exclude='.github' --exclude='.git' --exclude='scripts' main-content/ site/
-          mkdir -p site/preview
-          rsync -a --exclude='.github' --exclude='.git' --exclude='scripts' develop-content/ site/preview/
+          rsync -a --exclude='.github' --exclude='.git' --exclude='scripts' --exclude='site' ./ site/
           touch site/.nojekyll
 
       - name: Setup Pages
