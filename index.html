@@ -27,10 +27,12 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .header-date{font-size:11px;color:var(--muted);margin-top:3px;}
 
 /* NAV */
-.nav-tabs{display:flex;padding:10px 16px 0;gap:6px;overflow-x:auto;scrollbar-width:none;}
+/* Bottom-fixed iOS-style nav bar */
+.nav-tabs{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-around;align-items:stretch;background:var(--surface);border-top:1px solid var(--border);padding:6px 0 calc(6px + env(safe-area-inset-bottom));gap:0;z-index:50;}
 .nav-tabs::-webkit-scrollbar{display:none;}
-.nav-tab{flex-shrink:0;text-align:center;padding:8px 12px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border-radius:9px;border:1px solid var(--border);background:var(--surface);transition:all .2s;white-space:nowrap;}
-.nav-tab.active{color:#0f0f13;background:var(--accent);border-color:var(--accent);}
+.nav-tab{flex:1;text-align:center;padding:8px 4px;font-size:10px;font-weight:600;color:var(--muted);cursor:pointer;border-radius:8px;border:1px solid transparent;background:transparent;transition:all .15s;white-space:nowrap;display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1.1;min-height:44px;}
+.nav-tab.active{color:var(--accent);background:rgba(200,240,68,.08);border-color:rgba(200,240,68,.18);}
+body{padding-bottom:62px;}
 
 /* VIEWS */
 .view{display:none;}.view.active{display:block;}
@@ -43,6 +45,22 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .summary-row .summary-card:not(.full-width):not(.half-row) .card-label{font-size:9px;}
 .summary-row .summary-card:not(.full-width):not(.half-row) .card-value{font-size:18px;}
 .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 13px;position:relative;overflow:hidden;}
+
+/* ════════ TOAST NOTIFICATIONS ════════ */
+.toast-stack{position:fixed;left:0;right:0;bottom:90px;z-index:1000;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 16px;font-size:13px;color:var(--text);box-shadow:0 6px 20px rgba(0,0,0,.35);opacity:0;transform:translateY(16px);transition:all .25s ease;max-width:88vw;text-align:center;pointer-events:auto;}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast-success{border-color:var(--green);color:var(--green);}
+.toast-error{border-color:var(--danger);color:var(--danger);}
+.toast-warning{border-color:var(--orange);color:var(--orange);}
+
+/* ════════ LARGER TAP TARGETS ════════ */
+.theme-btn,.notif-btn,.refresh-btn{min-width:36px;min-height:36px;display:inline-flex;align-items:center;justify-content:center;}
+.cal-nav-btn{min-width:36px;min-height:36px;}
+.delete-btn{min-width:32px;min-height:32px;display:inline-flex;align-items:center;justify-content:center;}
+.tag-toggle{min-height:32px;}
+.paid-btn{width:32px;height:32px;}
+.spending-nav-btn{min-width:36px;min-height:36px;}
 .summary-row .summary-card.full-width{padding:11px 14px;}
 .summary-row .summary-card.full-width .card-label{font-size:10px;}
 .summary-row .summary-card.full-width .card-value{font-size:22px;margin-top:3px;}
@@ -282,7 +300,7 @@ canvas{width:100%!important;display:block;}
 .savings-goal-card{background:var(--surface);border:1px solid rgba(181,123,238,.3);border-radius:15px;padding:14px;margin-bottom:12px;}
 
 /* FAB */
-.fab{position:fixed;bottom:24px;right:20px;width:56px;height:56px;background:var(--accent);color:#0f0f13;border:none;border-radius:50%;font-size:26px;cursor:pointer;box-shadow:0 8px 24px rgba(200,240,68,.35);display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:200;}
+.fab{position:fixed;bottom:80px;right:20px;width:56px;height:56px;background:var(--accent);color:#0f0f13;border:none;border-radius:50%;font-size:26px;cursor:pointer;box-shadow:0 8px 24px rgba(200,240,68,.35);display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:200;}
 .fab:active{transform:scale(.92);}
 
 /* MODALS */
@@ -542,17 +560,20 @@ canvas{width:100%!important;display:block;}
 </div>
 
 <div class="nav-tabs">
-  <div class="nav-tab active" data-v="overview"  onclick="switchView('overview',this)">Overview</div>
-  <div class="nav-tab"        data-v="forecast"  onclick="switchView('forecast',this)">Forecast</div>
-  <div class="nav-tab"        data-v="list"      onclick="switchView('list',this)">Payments</div>
-  <div class="nav-tab"        data-v="export"    onclick="switchView('export',this)">⚙️ Settings</div>
-  <div class="nav-tab"        data-v="meals"     onclick="switchView('meals',this)">🍽 Meals</div>
+  <div class="nav-tab active" data-v="overview"  onclick="switchView('overview',this)"><span style="font-size:18px">🏠</span><span>Overview</span></div>
+  <div class="nav-tab"        data-v="forecast"  onclick="switchView('forecast',this)"><span style="font-size:18px">📈</span><span>Forecast</span></div>
+  <div class="nav-tab"        data-v="list"      onclick="switchView('list',this)"><span style="font-size:18px">💳</span><span>Payments</span></div>
+  <div class="nav-tab"        data-v="meals"     onclick="switchView('meals',this)"><span style="font-size:18px">🍽</span><span>Meals</span></div>
+  <div class="nav-tab"        data-v="export"    onclick="switchView('export',this)"><span style="font-size:18px">⚙️</span><span>Settings</span></div>
 </div>
 
 <!-- Pull-to-refresh indicator -->
 <div id="ptrIndicator" style="position:fixed;top:0;left:0;right:0;z-index:200;height:50px;display:flex;align-items:center;justify-content:center;background:var(--surface);border-bottom:1px solid var(--border);transform:translateY(-100%);transition:transform .2s;font-size:13px;color:var(--muted);font-weight:600;pointer-events:none">
   <span id="ptrText">Pull to refresh</span>
 </div>
+
+<!-- Toast notification stack -->
+<div class="toast-stack" id="toastStack"></div>
 
 <!-- ══ BUFFER WARNING ══ -->
 <div class="buffer-warning" id="bufferWarning">
@@ -946,7 +967,7 @@ canvas{width:100%!important;display:block;}
 <button class="fab" onclick="openModal()">+</button>
 
 <!-- Bulk action bar (visible when in selection mode) -->
-<div id="bulkActionBar" style="position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:10px 12px;display:none;align-items:center;gap:6px;z-index:90;flex-wrap:wrap;justify-content:space-between">
+<div id="bulkActionBar" style="position:fixed;bottom:62px;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:10px 12px;display:none;align-items:center;gap:6px;z-index:90;flex-wrap:wrap;justify-content:space-between">
   <span id="bulkCountLabel" style="font-size:12px;color:var(--muted);font-weight:600">0 selected</span>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
     <button onclick="bulkAction('paid')"      style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;cursor:pointer">✓ Paid</button>
@@ -1675,6 +1696,23 @@ function catLabel(c){
   return {grocery:'Groceries'}[c] || c;
 }
 function fmt(n){ return '€'+Math.abs(n).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+// ════════ TOAST ════════
+function toast(msg, type='info'){
+  const stack = document.getElementById('toastStack');
+  if (!stack) { console.log('[toast]', msg); return; }
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.textContent = msg;
+  stack.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  const ttl = type === 'error' ? 4500 : 2500;
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, ttl);
+}
+window.toast = toast;
 
 // ════════ VIEW SWITCHER ════════
 function switchView(v,el){
@@ -2709,12 +2747,12 @@ function deleteCustomCat(id){
 }
 window.deleteCustomCat = deleteCustomCat;
 async function forceResync(){
-  if (!_db || !_familyCode) { alert('Not signed in.'); return; }
+  if (!_db || !_familyCode) { toast('Not signed in.','warning'); return; }
   try {
     const snap = await getDoc(doc(_db, 'households', _familyCode, 'data', 'main'));
     if (snap.exists()) applyCloudData(snap.data());
-    alert('Re-synced from cloud.');
-  } catch(e) { alert('Re-sync failed: ' + e.message); }
+    toast('✅ Re-synced from cloud','success');
+  } catch(e) { toast('Re-sync failed: ' + e.message,'error'); }
 }
 window.forceResync = forceResync;
 function clearLocalCache(){
@@ -2747,12 +2785,12 @@ async function resetNotifications(){
     // 3. Clear local notif flag
     localStorage.removeItem('bgt_notif');
     // 4. Re-register from scratch
-    alert('Reset complete. Tap the 🔔 to re-enable.');
+    toast('Reset complete. Tap 🔔 to re-enable','success');
     const btn = document.getElementById('notifBtn');
     if (btn) btn.textContent = '🔔';
   } catch(e) {
     console.error('Reset notifications failed:', e);
-    alert('Reset failed: ' + (e.message || e));
+    toast('Reset failed: ' + (e.message||e),'error');
   }
 }
 window.resetNotifications = resetNotifications;
@@ -2775,7 +2813,7 @@ function renderExport(){
 }
 function copyExport(){
   const txt=document.getElementById('exportSheet').textContent;
-  navigator.clipboard.writeText(txt).then(()=>alert('Copied to clipboard!')).catch(()=>{});
+  navigator.clipboard.writeText(txt).then(()=>toast('✅ Copied to clipboard','success')).catch(()=>{});
 }
 
 // ════════ BACKUP / RESTORE ════════
@@ -2826,7 +2864,7 @@ async function shareBackup(){
   }
   // Fallback: regular download
   downloadBackup();
-  alert('This browser doesn\'t support sharing files — downloaded instead. On iPhone Safari, the share sheet usually appears.');
+  toast('Sharing not supported — downloaded instead','info');
 }
 window.shareBackup = shareBackup;
 async function restoreBackup(file){
@@ -2860,10 +2898,10 @@ async function restoreBackup(file){
     nextId = Math.max(...payments.map(p=>p.id||0),0)+1;
     syncBudgetVars();
     save(); render(); if(activeView==='forecast') renderForecast();
-    alert('Backup restored. Your data has been updated locally and will sync to the cloud once the first sync completes.');
+    toast('✅ Backup restored — syncing to cloud','success');
   } catch(e) {
     console.error('Restore failed:',e);
-    alert('Restore failed: ' + (e.message||e));
+    toast('Restore failed: ' + (e.message||e),'error');
   } finally {
     document.getElementById('restoreFile').value = '';
   }
@@ -3128,12 +3166,12 @@ function addPayment(){
   const onetime=document.getElementById('fOnetime').checked;
   const isDebt=document.getElementById('fDebt').checked;
   const frequency=document.getElementById('fFrequency').value || 'monthly';
-  if(!name||isNaN(amount)||amount<=0){alert('Please enter a name and amount.');return;}
-  if(!onetime&&(isNaN(day)||day<1||day>31)){alert('Please enter a valid day (1–31).');return;}
+  if(!name||isNaN(amount)||amount<=0){toast('Enter a name and amount','warning');return;}
+  if(!onetime&&(isNaN(day)||day<1||day>31)){toast('Enter a valid day (1–31)','warning');return;}
   // Handle new custom category
   if(cat==='__new__'){
     const newLabel=document.getElementById('newCategoryInput').value.trim();
-    if(!newLabel){alert('Please enter a category name.');return;}
+    if(!newLabel){toast('Enter a category name','warning');return;}
     // Check if already exists
     const existing=customCategories.find(c=>c.label.toLowerCase()===newLabel.toLowerCase());
     if(existing){
@@ -3330,7 +3368,7 @@ function renderLibIngInputs() {
 function saveLibraryMeal() {
   captureLibIngInputs();
   const name=document.getElementById('libMealName').value.trim();
-  if(!name){alert('Please enter a meal name.');return;}
+  if(!name){toast('Enter a meal name','warning');return;}
   const entry = {name, ingredients:libIngredients.filter(i=>i.name.trim()).map(i=>({name:i.name.trim(),have:i.have}))};
   if(libEditIndex >= 0) {
     mealLibrary[libEditIndex] = entry; // update existing
@@ -3593,7 +3631,7 @@ function saveMeal() {
   } else if(sel.value!==''){
     name=mealLibrary[parseInt(sel.value)].name;
   }
-  if(!name){alert('Please select or enter a meal name.');return;}
+  if(!name){toast('Select or enter a meal name','warning');return;}
   if(!meals[mealModalDate]) meals[mealModalDate]={};
   meals[mealModalDate][mealModalType]={
     name,
@@ -3876,7 +3914,7 @@ function saveSpending() {
   save();
   renderSpending();
   renderActualChart();
-  alert('Spending saved ✅');
+  toast('✅ Spending saved','success');
 }
 function renderActualChart() {
   const canvas = document.getElementById('actualChart');
@@ -3954,7 +3992,7 @@ function saveFund() {
   const name=document.getElementById('fundName').value.trim();
   const monthly=parseFloat(document.getElementById('fundMonthly').value)||0;
   const goal=parseFloat(document.getElementById('fundGoal').value)||0;
-  if(!name){alert('Please enter a fund name.');return;}
+  if(!name){toast('Enter a fund name','warning');return;}
   sinkingFunds.push({name,monthly,goal,saved:0});
   save(); document.getElementById('fundModalOverlay').classList.remove('open'); renderSinkingFunds();
 }
@@ -3975,7 +4013,7 @@ function resetFund(i) {
 
 // ════════ NOTIFICATIONS ════════
 async function requestNotifPermission() {
-  if(!('Notification' in window)){alert('Notifications not supported in this browser.');return;}
+  if(!('Notification' in window)){toast('Notifications not supported here','warning');return;}
   const perm = await Notification.requestPermission();
   const btn = document.getElementById('notifBtn');
   if(perm!=='granted'){
@@ -3989,8 +4027,8 @@ async function requestNotifPermission() {
   // Background pushes handled by FCM + the daily Cloud Action — no in-app duplicate.
   // Register FCM for background pushes
   try {
-    if(!_messaging){alert('Notifications enabled (in-app only — messaging unavailable).');return;}
-    if(!('serviceWorker' in navigator)){alert('Notifications enabled (in-app only — service worker unavailable).');return;}
+    if(!_messaging){toast('Enabled (in-app only — messaging unavailable)','warning');return;}
+    if(!('serviceWorker' in navigator)){toast('Enabled (in-app only — no service worker)','warning');return;}
     const swUrl=new URL('./firebase-messaging-sw.js',window.location.href).toString();
     const swReg=await navigator.serviceWorker.register(swUrl);
     // iOS Safari occasionally returns "Load failed" on the first FCM token subscribe.
@@ -4006,7 +4044,7 @@ async function requestNotifPermission() {
         await new Promise(r => setTimeout(r, 1500));
       }
     }
-    if(!token){alert('Notifications enabled, but couldn\'t get a push token. Try reloading.');return;}
+    if(!token){toast('No push token — try reloading','warning');return;}
     if(_familyCode && _uid){
       const ua = navigator.userAgent.slice(0,200);
       // Use the platform parenthetical (e.g. "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X)")
@@ -4026,13 +4064,13 @@ async function requestNotifPermission() {
       await setDoc(doc(_db,'households',_familyCode,'pushTokens',token),{
         uid:_uid, ua, createdAt:new Date().toISOString()
       });
-      alert('Push notifications enabled! You\'ll get reminders for upcoming payments.');
+      toast('✅ Push notifications enabled','success');
     } else {
-      alert('Notifications enabled, but you need to be signed in for push.');
+      toast('Sign in to enable push','warning');
     }
   } catch(e){
     console.error('FCM setup failed:',e);
-    alert('Notifications enabled in-app, but push setup failed: '+(e.message||e));
+    toast('Push setup failed: '+(e.message||e),'error');
   }
 }
 window.requestNotifPermission = requestNotifPermission;
@@ -4072,7 +4110,7 @@ function shareShoppingListWhatsApp() {
   const keys=[todayKey(), offsetDateKey(1), offsetDateKey(2)];
   const all = getAllIngredients(keys);
   const missing = all.filter(x=>!x.have);
-  if(!missing.length){alert('No missing ingredients to share!');return;}
+  if(!missing.length){toast('No missing ingredients','info');return;}
   const lines = missing.map(x=>`• ${x.name} (${x.dayLabel})`).join('\n');
   const text = encodeURIComponent(`🛒 Shopping list:\n${lines}`);
   window.open(`https://wa.me/?text=${text}`,'_blank');
@@ -4095,10 +4133,10 @@ function copyWeekToNext() {
       copied++;
     }
   }
-  if(copied===0){alert('No meals planned this week to copy.');return;}
+  if(copied===0){toast('No meals planned this week','warning');return;}
   save();
   renderMealsCalendar();
-  alert(`✅ Copied ${copied} days to next week!`);
+  toast(`✅ Copied ${copied} days to next week`,'success');
 }
 
 window.switchMealsTab    = switchMealsTab;
