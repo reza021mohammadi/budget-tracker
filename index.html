@@ -617,10 +617,10 @@ canvas{width:100%!important;display:block;}
       </div>
     </div>
     <!-- Remaining -->
-    <div class="summary-card c-remaining full-width">
+    <div class="summary-card c-remaining full-width collapsible" onclick="toggleEditCard(this,event)">
       <div class="card-label">Remaining This Month</div>
-      <!-- Planned row -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);">
+      <!-- Planned row (always visible — primary number) -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;">
         <div>
           <div style="font-size:11px;color:var(--muted)">Planned</div>
           <div style="font-size:10px;color:var(--muted);opacity:.6;margin-top:2px">income − budgeted costs</div>
@@ -630,26 +630,28 @@ canvas{width:100%!important;display:block;}
           <div id="remainingPct" style="font-size:10px;margin-top:3px"></div>
         </div>
       </div>
-      <!-- Actual row -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;">
-        <div>
-          <div style="font-size:11px;color:var(--muted)">Actual</div>
-          <div style="font-size:10px;color:var(--muted);opacity:.6;margin-top:2px">income − real spending</div>
+      <div class="card-detail">
+        <!-- Actual row -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-top:1px solid var(--border);">
+          <div>
+            <div style="font-size:11px;color:var(--muted)">Actual</div>
+            <div style="font-size:10px;color:var(--muted);opacity:.6;margin-top:2px">income − real spending</div>
+          </div>
+          <div style="text-align:right">
+            <div id="remainingActual" style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--muted)">—</div>
+            <div id="remainingActualPct" style="font-size:10px;margin-top:3px"></div>
+          </div>
         </div>
-        <div style="text-align:right">
-          <div id="remainingActual" style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--muted)">—</div>
-          <div id="remainingActualPct" style="font-size:10px;margin-top:3px"></div>
+        <!-- Difference -->
+        <div id="remainingDiff" style="display:none;border-top:1px solid var(--border);padding-top:8px;margin-top:2px;display:flex;align-items:center;justify-content:space-between;">
+          <span id="remainingDiffLabel" style="font-size:10px;color:var(--muted);flex:1;padding-right:8px"></span>
+          <span id="remainingDiffVal" style="font-size:12px;font-weight:700"></span>
         </div>
-      </div>
-      <!-- Difference -->
-      <div id="remainingDiff" style="display:none;border-top:1px solid var(--border);padding-top:8px;margin-top:2px;display:flex;align-items:center;justify-content:space-between;">
-        <span id="remainingDiffLabel" style="font-size:10px;color:var(--muted);flex:1;padding-right:8px"></span>
-        <span id="remainingDiffVal" style="font-size:12px;font-weight:700"></span>
-      </div>
-      <!-- Payday countdown -->
-      <div class="payday-countdown">
-        <div><div class="pc-label">Next payday</div><div class="pc-value" id="paydayDate">—</div></div>
-        <div style="text-align:right"><div class="pc-label">Days away</div><div class="pc-value" id="daysToPayday">—</div></div>
+        <!-- Payday countdown -->
+        <div class="payday-countdown">
+          <div><div class="pc-label">Next payday</div><div class="pc-value" id="paydayDate">—</div></div>
+          <div style="text-align:right"><div class="pc-label">Days away</div><div class="pc-value" id="daysToPayday">—</div></div>
+        </div>
       </div>
     </div>
     <!-- Buffer alert (warning if remaining drops below threshold) -->
