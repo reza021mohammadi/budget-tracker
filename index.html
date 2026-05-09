@@ -1810,7 +1810,17 @@ function renderList(monthly, up){
   [...new Set(filtered.map(p=>p.cat))].forEach(cat=>{
     const items=filtered.filter(p=>p.cat===cat).sort((a,b)=>a.day-b.day);
     const sec=document.createElement('div');sec.className='section';
-    sec.innerHTML=`<div class="section-label">${catLabel(cat)}</div>`;
+    const catTotal=items.reduce((s,p)=>s+p.amount,0);
+    const collapsed=collapsedCats.has(cat);
+    sec.innerHTML=`<div class="section-header" onclick="toggleCatCollapse('${cat}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;user-select:none">
+      <div class="section-label" style="margin-bottom:0">${catLabel(cat)} <span style="opacity:.55;font-weight:500;margin-left:4px">· ${items.length}</span></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--text);font-weight:700">${fmt(catTotal)}</span>
+        <span style="display:inline-block;transition:transform .2s;transform:rotate(${collapsed?-90:0}deg);font-size:12px;color:var(--muted)">▾</span>
+      </div>
+    </div>
+    <div class="section-body" style="display:${collapsed?'none':'block'}"></div>`;
+    const body=sec.querySelector('.section-body');
     items.forEach((p,i)=>{
       const div=document.createElement('div');
       const archived=!!p._archived;
@@ -1838,7 +1848,7 @@ function renderList(monthly, up){
         ${selectionMode ? '' : paidBtn}
         ${selectionMode ? '' : tagBtn}
         ${selectionMode ? '' : `<button class="delete-btn" onclick="deletePayment(${p.id})">×</button>`}`;
-      sec.appendChild(div);
+      body.appendChild(div);
       attachLongPress(div, p.id);
       if (!selectionMode) attachSwipeDelete(div, p.id);
     });
@@ -2478,6 +2488,15 @@ function deletePayment(id){if(!confirm('Remove?'))return;payments=payments.filte
 function filterRange(r,el){activeRange=r;document.querySelectorAll('.range-pill').forEach(p=>p.classList.remove('active'));el.classList.add('active');render();}
 function switchTab(t,el){activeTab=t;document.querySelectorAll('.list-tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');render();}
 function filterTag(t,el){activeTag=t;document.querySelectorAll('.tag-chip').forEach(x=>{ if(x.id!=='archivedChip') x.classList.remove('active'); });el.classList.add('active');render();}
+// Per-category collapse state for the payment list (persists in localStorage)
+const collapsedCats = new Set(JSON.parse(localStorage.getItem('bgt_collapsed_cats')||'[]'));
+function toggleCatCollapse(cat){
+  if (collapsedCats.has(cat)) collapsedCats.delete(cat);
+  else collapsedCats.add(cat);
+  localStorage.setItem('bgt_collapsed_cats', JSON.stringify([...collapsedCats]));
+  render();
+}
+window.toggleCatCollapse = toggleCatCollapse;
 let showArchived=false;
 function toggleArchived(el){
   showArchived=!showArchived;
