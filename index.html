@@ -780,6 +780,10 @@ canvas{width:100%!important;display:block;}
 <!-- ══════════ EXPORT ══════════ -->
 <div class="view" id="view-export">
   <div class="forecast-section">
+    <div class="fs-title">🔔 Notification Preferences</div>
+    <div class="fs-sub">Choose which pushes to receive. Daily delivery at 09:00 CET.</div>
+    <div id="notifPrefsBox" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:18px;display:flex;flex-direction:column;gap:10px"></div>
+
     <div class="fs-title">Backup &amp; Restore</div>
     <div class="fs-sub">Download a JSON snapshot of all your data. Keep this somewhere safe (iCloud Drive, email to yourself, etc.) — you can restore from it any time.</div>
     <button class="btn-submit" style="margin-bottom:8px;" onclick="downloadBackup()">💾 Download Backup (JSON)</button>
@@ -1151,6 +1155,7 @@ function applyCloudData(d) {
   if (d.payday!=null)     { payday      = d.payday;      localStorage.setItem('bgt_pd', d.payday); }
   if (d.savingsGoal!=null){ savingsGoal = d.savingsGoal; localStorage.setItem('bgt_sg', d.savingsGoal); }
   if (d.bufferAmt!=null)  { bufferAmt   = d.bufferAmt;   localStorage.setItem('bgt_bf', d.bufferAmt); }
+  if (d.notifPrefs && typeof d.notifPrefs === 'object') { notifPrefs = d.notifPrefs; localStorage.setItem('bgt_np', JSON.stringify(notifPrefs)); }
   if (d.updatedBy && d.updatedAt) {
     const el = document.getElementById('updatedByLabel');
     const me = _auth && _auth.currentUser ? (_auth.currentUser.displayName || _auth.currentUser.email) : null;
@@ -1274,7 +1279,7 @@ async function saveToCloud() {
   setSyncBadge('syncing', '⏳ Saving…');
   try {
     await setDoc(doc(_db, 'households', _familyCode, 'data', 'main'), {
-      payments, monthlyBudgets, meals, mealLibrary, sinkingFunds, spending, customCategories, payday, savingsGoal, bufferAmt,
+      payments, monthlyBudgets, meals, mealLibrary, sinkingFunds, spending, customCategories, payday, savingsGoal, bufferAmt, notifPrefs,
       updatedAt: new Date().toISOString(),
       updatedBy: _auth && _auth.currentUser ? (_auth.currentUser.displayName || _auth.currentUser.email || 'Unknown') : 'Unknown'
     });
@@ -1364,6 +1369,21 @@ let mealLibrary= JSON.parse(localStorage.getItem('bgt_ml')||'[]');
 let payday     = parseInt(localStorage.getItem('bgt_pd')  ||'25');
 let savingsGoal= parseFloat(localStorage.getItem('bgt_sg')||'500');
 let bufferAmt  = parseFloat(localStorage.getItem('bgt_bf')||'500');
+let notifPrefs = (() => {
+  try { return JSON.parse(localStorage.getItem('bgt_np')||'null') || {}; } catch(e) { return {}; }
+})();
+const NOTIF_PREF_DEFS = [
+  {id:'paymentDueTomorrow', label:'Payments due tomorrow', def:true},
+  {id:'paydayTomorrow',     label:'Payday tomorrow',       def:true},
+  {id:'paymentEnded',       label:'Installment paid off',  def:true},
+  {id:'bufferLow',          label:'Buffer alert (remaining below threshold)', def:false},
+  {id:'weeklyRecap',        label:'Weekly recap (Mondays)', def:false},
+];
+function getNotifPref(id){
+  if (notifPrefs && notifPrefs[id] !== undefined) return !!notifPrefs[id];
+  const d = NOTIF_PREF_DEFS.find(x => x.id === id);
+  return d ? d.def : false;
+}
 let sinkingFunds = JSON.parse(localStorage.getItem('bgt_sf')||'[]');
 let spending     = JSON.parse(localStorage.getItem('bgt_sp')||'{}');
 let customCategories = JSON.parse(localStorage.getItem('bgt_cc')||'[]'); // [{id, label, color}] // {YYYY-MM:{groceries,recreation,other}}
@@ -2106,7 +2126,26 @@ function renderMonthCards(data){
 function toggleBD(h){ h.closest('.month-card').querySelector('.mc-breakdown').classList.toggle('open'); }
 
 // ════════ EXPORT ════════
+function renderNotifPrefs(){
+  const box = document.getElementById('notifPrefsBox');
+  if(!box) return;
+  box.innerHTML = NOTIF_PREF_DEFS.map(def => `
+    <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer">
+      <span style="font-size:13px;color:var(--text)">${def.label}</span>
+      <input type="checkbox" data-pref="${def.id}" ${getNotifPref(def.id)?'checked':''} style="width:18px;height:18px;cursor:pointer">
+    </label>
+  `).join('');
+  box.querySelectorAll('input[data-pref]').forEach(input => {
+    input.addEventListener('change', () => {
+      notifPrefs[input.dataset.pref] = input.checked;
+      localStorage.setItem('bgt_np', JSON.stringify(notifPrefs));
+      saveToCloud();
+    });
+  });
+}
+window.renderNotifPrefs = renderNotifPrefs;
 function renderExport(){
+  renderNotifPrefs();
   const now=today(), monthly=payments.filter(p=>!p.onetime);
   const fixed=monthly.reduce((s,p)=>s+p.amount,0);
   const total=fixed+grocery+recreation+clothes+restaurant+other2;
