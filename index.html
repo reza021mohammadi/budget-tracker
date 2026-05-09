@@ -180,6 +180,10 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .payment-item.is-paid .pr-amount{opacity:.55;}
 .payment-item.is-archived{opacity:.45;}
 .payment-item.is-archived .pi-name{text-decoration:line-through;}
+.payment-item.is-selected{border-color:var(--accent);background:rgba(200,240,68,.06);}
+.select-mark{width:18px;height:18px;border:2px solid var(--border);border-radius:6px;flex-shrink:0;}
+.select-mark.on{background:var(--accent);border-color:var(--accent);position:relative;}
+.select-mark.on::after{content:'✓';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--bg);font-size:11px;font-weight:900;}
 .b-ended{font-size:9px;background:rgba(122,122,144,.18);color:var(--muted);border:1px solid rgba(122,122,144,.3);border-radius:99px;padding:1px 6px;margin-left:5px;font-weight:600;}
 .tag-none{background:var(--surface2);color:var(--muted);border:1px dashed var(--border);}
 .tag-essential{background:rgba(62,207,142,.12);border:1px solid rgba(62,207,142,.3);color:var(--green);}
@@ -845,6 +849,19 @@ canvas{width:100%!important;display:block;}
 </div>
 
 <button class="fab" onclick="openModal()">+</button>
+
+<!-- Bulk action bar (visible when in selection mode) -->
+<div id="bulkActionBar" style="position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:10px 12px;display:none;align-items:center;gap:6px;z-index:90;flex-wrap:wrap;justify-content:space-between">
+  <span id="bulkCountLabel" style="font-size:12px;color:var(--muted);font-weight:600">0 selected</span>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button onclick="bulkAction('paid')"      style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;cursor:pointer">✓ Paid</button>
+    <button onclick="bulkAction('essential')" style="background:rgba(62,207,142,.12);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:6px 10px;color:var(--green);font-size:12px;cursor:pointer">✅ Essential</button>
+    <button onclick="bulkAction('optional')"  style="background:rgba(181,123,238,.12);border:1px solid rgba(181,123,238,.3);border-radius:8px;padding:6px 10px;color:var(--purple);font-size:12px;cursor:pointer">✨ Optional</button>
+    <button onclick="bulkAction('untag')"     style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;cursor:pointer">– Tag</button>
+    <button onclick="bulkAction('delete')"    style="background:rgba(255,78,78,.12);border:1px solid rgba(255,78,78,.3);border-radius:8px;padding:6px 10px;color:var(--danger);font-size:12px;cursor:pointer">🗑 Delete</button>
+    <button onclick="exitSelectionMode()"     style="background:transparent;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted);font-size:12px;cursor:pointer">Cancel</button>
+  </div>
+</div>
 
 <!-- ══ MEAL MODAL ══ -->
 <div class="modal-overlay" id="mealModalOverlay" onclick="closeOnBg(event,'mealModalOverlay')">
@@ -1768,27 +1785,32 @@ function renderList(monthly, up){
       const div=document.createElement('div');
       const archived=!!p._archived;
       const paid=!p.onetime&&!archived&&isPaidThisMonth(p.id);
-      div.className='payment-item'+(upIds.has(p.id)?' due-soon':'')+(p.tag==='optional'?' is-optional':'')+(paid?' is-paid':'')+(archived?' is-archived':'');
+      const selected=selectionMode && selectedIds.has(p.id);
+      div.className='payment-item'+(upIds.has(p.id)?' due-soon':'')+(p.tag==='optional'?' is-optional':'')+(paid?' is-paid':'')+(archived?' is-archived':'')+(selected?' is-selected':'');
       div.style.animationDelay=(i*25)+'ms';
+      const tapHandler = selectionMode ? `event.stopPropagation();toggleSelected(${p.id})` : `openEditModal(${p.id})`;
       const tagBtn = p.tag==='essential'
         ? `<button class="tag-toggle tag-essential" onclick="cycleTag(${p.id})" title="Tap to change">✅ Essential</button>`
         : p.tag==='optional'
         ? `<button class="tag-toggle tag-optional" onclick="cycleTag(${p.id})" title="Tap to change">✨ Optional</button>`
         : `<button class="tag-toggle tag-none" onclick="cycleTag(${p.id})" title="Tap to tag">+ Tag</button>`;
       const paidBtn = (p.onetime||archived) ? '' : `<button class="paid-btn${paid?' paid':''}" onclick="togglePaid(${p.id})" title="${paid?'Mark unpaid':'Mark as paid'}">✓</button>`;
+      const selectMark = selectionMode ? `<div class="select-mark${selected?' on':''}" style="margin-right:6px"></div>` : '';
       div.innerHTML=`<div class="swipe-delete-bg">Delete</div>
+        ${selectMark}
         <div class="pd ${catDot(cat)}" style="${catColor(cat)?'background:'+catColor(cat)+';':''}"></div>
-        <div class="pi" onclick="openEditModal(${p.id})" style="cursor:pointer">
+        <div class="pi" onclick="${tapHandler}" style="cursor:pointer">
           <div class="pi-name">${p.name}${p.onetime?'<span class="badge b-onetime">1×</span>':''}${upIds.has(p.id)?'<span class="badge b-due">Due</span>':''}${archived?`<span class="b-ended">Ended ${p.endDate||''}</span>`:''}</div>
           <div class="pi-meta">${p.onetime?(p.onetimeDate||''):((p.frequency&&p.frequency!=='monthly'?({yearly:'Yearly',quarterly:'Quarterly',bimonthly:'Every 2 mo'}[p.frequency]||'')+' · ':'')+'Ends: '+p.endDate)}</div>
           ${p.note?`<div class="pi-note">💬 ${p.note}</div>`:''}
         </div>
-        <div class="pr" onclick="openEditModal(${p.id})" style="cursor:pointer"><div class="pr-amount">${fmt(p.amount)}</div><div class="pr-day">${p.onetime?'':'Day '+p.day}</div></div>
-        ${paidBtn}
-        ${tagBtn}
-        <button class="delete-btn" onclick="deletePayment(${p.id})">×</button>`;
+        <div class="pr" onclick="${tapHandler}" style="cursor:pointer"><div class="pr-amount">${fmt(p.amount)}</div><div class="pr-day">${p.onetime?'':'Day '+p.day}</div></div>
+        ${selectionMode ? '' : paidBtn}
+        ${selectionMode ? '' : tagBtn}
+        ${selectionMode ? '' : `<button class="delete-btn" onclick="deletePayment(${p.id})">×</button>`}`;
       sec.appendChild(div);
-      attachSwipeDelete(div, p.id);
+      attachLongPress(div, p.id);
+      if (!selectionMode) attachSwipeDelete(div, p.id);
     });
     container.appendChild(sec);
   });
@@ -2902,6 +2924,85 @@ function clearSearch() {
 }
 
 // ════════ SWIPE TO DELETE ════════
+// ════════ MULTI-SELECT (long-press) ════════
+let selectionMode = false;
+const selectedIds = new Set();
+function setBulkBarVisibility(){
+  const bar = document.getElementById('bulkActionBar');
+  if (!bar) return;
+  bar.style.display = selectionMode ? 'flex' : 'none';
+  document.getElementById('bulkCountLabel').textContent = `${selectedIds.size} selected`;
+}
+function enterSelectionMode(initialId){
+  selectionMode = true;
+  selectedIds.clear();
+  if (initialId != null) selectedIds.add(initialId);
+  setBulkBarVisibility();
+  render();
+}
+function exitSelectionMode(){
+  selectionMode = false;
+  selectedIds.clear();
+  setBulkBarVisibility();
+  render();
+}
+window.exitSelectionMode = exitSelectionMode;
+function toggleSelected(id){
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  if (selectedIds.size === 0) { exitSelectionMode(); return; }
+  setBulkBarVisibility();
+  render();
+}
+function bulkAction(action){
+  const ids = [...selectedIds];
+  if (ids.length === 0) { exitSelectionMode(); return; }
+  if (action === 'delete') {
+    if (!confirm(`Delete ${ids.length} payment${ids.length===1?'':'s'}?`)) return;
+    payments = payments.filter(p => !ids.includes(p.id));
+  } else if (action === 'paid') {
+    const key = budgetKey(budgetMonth.year, budgetMonth.month);
+    getBudget();
+    if (!Array.isArray(monthlyBudgets[key].paidIds)) monthlyBudgets[key].paidIds = [];
+    const arr = monthlyBudgets[key].paidIds;
+    // If any selected isn't paid yet, mark all paid; otherwise unpay all
+    const anyUnpaid = ids.some(id => !arr.includes(id));
+    ids.forEach(id => {
+      const i = arr.indexOf(id);
+      if (anyUnpaid) { if (i < 0) arr.push(id); }
+      else { if (i >= 0) arr.splice(i, 1); }
+    });
+  } else if (action === 'essential' || action === 'optional' || action === 'untag') {
+    const tag = action === 'untag' ? '' : action;
+    payments.forEach(p => { if (ids.includes(p.id)) p.tag = tag; });
+  }
+  save();
+  exitSelectionMode();
+  if (activeView === 'forecast') renderForecast();
+}
+window.bulkAction = bulkAction;
+function attachLongPress(el, id){
+  let timer = null, startX = 0, startY = 0, fired = false;
+  const start = (x, y) => {
+    startX = x; startY = y; fired = false;
+    timer = setTimeout(() => {
+      timer = null; fired = true;
+      if (navigator.vibrate) try { navigator.vibrate(40); } catch(e) {}
+      enterSelectionMode(id);
+    }, 500);
+  };
+  const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+  el.addEventListener('touchstart', e => start(e.touches[0].clientX, e.touches[0].clientY), {passive:true});
+  el.addEventListener('touchmove', e => {
+    if (!timer) return;
+    const dx = Math.abs(e.touches[0].clientX - startX);
+    const dy = Math.abs(e.touches[0].clientY - startY);
+    if (dx > 10 || dy > 10) cancel();
+  }, {passive:true});
+  el.addEventListener('touchend', cancel);
+  // Desktop right-click also enters selection mode
+  el.addEventListener('contextmenu', e => { e.preventDefault(); enterSelectionMode(id); });
+}
 function attachSwipeDelete(el, id) {
   let startX = 0, dx = 0;
   const bg = el.querySelector('.swipe-delete-bg');
