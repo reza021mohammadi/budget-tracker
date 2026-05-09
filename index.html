@@ -1856,14 +1856,17 @@ function renderList(monthly, up){
     container.innerHTML+=`<div style="padding:10px 16px 0"><div style="background:rgba(181,123,238,.08);border:1px solid rgba(181,123,238,.25);border-radius:10px;padding:9px 13px;font-size:12px;color:var(--purple)">✨ You could save <b>${fmt(optionalTotal)}/mo</b> by cancelling optional payments</div></div>`;
   }
   [...new Set(filtered.map(p=>p.cat))].forEach(cat=>{
-    const items=filtered.filter(p=>p.cat===cat).sort((a,b)=>a.day-b.day);
+    const items=filtered.filter(p=>p.cat===cat)
+      .sort((a,b) => ((a.order ?? a.day) - (b.order ?? b.day)));
     const sec=document.createElement('div');sec.className='section';
     const catTotal=items.reduce((s,p)=>s+p.amount,0);
     const collapsed=collapsedCats.has(cat);
+    const reordering = reorderingCat === cat;
     sec.innerHTML=`<div class="section-header" onclick="toggleCatCollapse('${cat}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;user-select:none">
       <div class="section-label" style="margin-bottom:0">${catLabel(cat)} <span style="opacity:.55;font-weight:500;margin-left:4px">· ${items.length}</span></div>
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:12px;color:var(--text);font-weight:700">${fmt(catTotal)}</span>
+        <button onclick="event.stopPropagation();toggleReorderMode('${cat}')" title="${reordering?'Done reordering':'Reorder items'}" style="background:${reordering?'rgba(200,240,68,.15)':'transparent'};border:1px solid ${reordering?'var(--accent)':'var(--border)'};border-radius:6px;padding:2px 6px;color:${reordering?'var(--accent)':'var(--muted)'};font-size:11px;font-weight:700;cursor:pointer">↕</button>
         <span style="display:inline-block;transition:transform .2s;transform:rotate(${collapsed?-90:0}deg);font-size:12px;color:var(--muted)">▾</span>
       </div>
     </div>
@@ -1884,21 +1887,26 @@ function renderList(monthly, up){
         : `<button class="tag-toggle tag-none" onclick="cycleTag(${p.id})" title="Tap to tag">+ Tag</button>`;
       const paidBtn = (p.onetime||archived) ? '' : `<button class="paid-btn${paid?' paid':''}" onclick="togglePaid(${p.id})" title="${paid?'Mark unpaid':'Mark as paid'}">✓</button>`;
       const selectMark = selectionMode ? `<div class="select-mark${selected?' on':''}" style="margin-right:6px"></div>` : '';
+      const isFirst = i === 0, isLast = i === items.length - 1;
+      const moveBtns = reordering ? `
+        <button onclick="event.stopPropagation();movePayment(${p.id},-1)" ${isFirst?'disabled':''} style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:13px;cursor:pointer;margin-right:4px;${isFirst?'opacity:.3;':''}">▲</button>
+        <button onclick="event.stopPropagation();movePayment(${p.id},1)"  ${isLast?'disabled':''}  style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:13px;cursor:pointer;${isLast?'opacity:.3;':''}">▼</button>` : '';
+      const itemTap = reordering ? '' : tapHandler;
       div.innerHTML=`<div class="swipe-delete-bg">Delete</div>
         ${selectMark}
         <div class="pd ${catDot(cat)}" style="${catColor(cat)?'background:'+catColor(cat)+';':''}"></div>
-        <div class="pi" onclick="${tapHandler}" style="cursor:pointer">
+        <div class="pi" onclick="${itemTap}" style="cursor:${reordering?'default':'pointer'}">
           <div class="pi-name">${p.name}${p.onetime?'<span class="badge b-onetime">1×</span>':''}${upIds.has(p.id)?'<span class="badge b-due">Due</span>':''}${archived?`<span class="b-ended">Ended ${p.endDate||''}</span>`:''}</div>
           <div class="pi-meta">${p.onetime?(p.onetimeDate||''):((p.frequency&&p.frequency!=='monthly'?({yearly:'Yearly',quarterly:'Quarterly',bimonthly:'Every 2 mo'}[p.frequency]||'')+' · ':'')+'Ends: '+p.endDate)}</div>
           ${p.note?`<div class="pi-note">💬 ${p.note}</div>`:''}
         </div>
-        <div class="pr" onclick="${tapHandler}" style="cursor:pointer"><div class="pr-amount">${fmt(p.amount)}</div><div class="pr-day">${p.onetime?'':'Day '+p.day}</div></div>
-        ${selectionMode ? '' : paidBtn}
-        ${selectionMode ? '' : tagBtn}
-        ${selectionMode ? '' : `<button class="delete-btn" onclick="deletePayment(${p.id})">×</button>`}`;
+        <div class="pr" onclick="${itemTap}" style="cursor:${reordering?'default':'pointer'}"><div class="pr-amount">${fmt(p.amount)}</div><div class="pr-day">${p.onetime?'':'Day '+p.day}</div></div>
+        ${reordering ? moveBtns : ((selectionMode ? '' : paidBtn) + (selectionMode ? '' : tagBtn) + (selectionMode ? '' : `<button class="delete-btn" onclick="deletePayment(${p.id})">×</button>`))}`;
       body.appendChild(div);
-      attachLongPress(div, p.id);
-      if (!selectionMode) attachSwipeDelete(div, p.id);
+      if (!reordering) {
+        attachLongPress(div, p.id);
+        if (!selectionMode) attachSwipeDelete(div, p.id);
+      }
     });
     container.appendChild(sec);
   });
@@ -2570,6 +2578,31 @@ function toggleCatCollapse(cat){
   render();
 }
 window.toggleCatCollapse = toggleCatCollapse;
+let reorderingCat = null;
+function toggleReorderMode(cat){
+  reorderingCat = (reorderingCat === cat) ? null : cat;
+  // Make sure section is expanded while reordering
+  if (reorderingCat) collapsedCats.delete(cat);
+  render();
+}
+window.toggleReorderMode = toggleReorderMode;
+function movePayment(id, dir){
+  const p = payments.find(x => x.id === id);
+  if (!p) return;
+  const isOnetime = !!p.onetime;
+  const siblings = payments
+    .filter(x => x.cat === p.cat && !!x.onetime === isOnetime)
+    .sort((a,b) => ((a.order ?? a.day) - (b.order ?? b.day)));
+  const idx = siblings.findIndex(x => x.id === id);
+  const target = idx + dir;
+  if (target < 0 || target >= siblings.length) return;
+  const moved = siblings.splice(idx,1)[0];
+  siblings.splice(target, 0, moved);
+  siblings.forEach((s,i) => { s.order = i; });
+  save();
+  render();
+}
+window.movePayment = movePayment;
 let showArchived=false;
 function toggleArchived(el){
   showArchived=!showArchived;
