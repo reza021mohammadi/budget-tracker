@@ -250,6 +250,7 @@ canvas{width:100%!important;display:block;}
 .bdr-dot{width:6px;height:6px;border-radius:50%;}
 .bdr-amt{font-weight:700;color:var(--danger);font-size:12px;}
 .bdr.expired{opacity:.38;text-decoration:line-through;}
+.bdr.sim-off{opacity:.5;text-decoration:line-through;color:var(--accent2);}
 .bdr-saving{color:var(--orange);font-size:12px;}
 .collapse-btn{font-size:11px;color:var(--accent);margin-top:7px;cursor:pointer;display:block;}
 
@@ -714,7 +715,11 @@ canvas{width:100%!important;display:block;}
 <div class="view" id="view-forecast">
   <div class="forecast-section">
     <div class="fs-title">6-Month Forecast</div>
-    <div class="fs-sub">Costs auto-adjust as installments expire. Tap any month to expand.</div>
+    <div class="fs-sub">Costs auto-adjust as installments expire. Tap any month to expand. Tap a payment inside a month to simulate cancelling it.</div>
+    <div id="simBanner" style="display:none;background:rgba(124,111,239,.1);border:1px solid rgba(124,111,239,.3);border-radius:10px;padding:8px 12px;margin:8px 0;display:none;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--accent2)">
+      <span id="simBannerText">🔬 Simulating without 0 payment(s)</span>
+      <button onclick="resetSim()" style="background:rgba(124,111,239,.15);border:1px solid rgba(124,111,239,.4);border-radius:6px;padding:4px 10px;color:var(--accent2);font-size:11px;font-weight:700;cursor:pointer">Reset</button>
+    </div>
 
     <!-- Bar chart: costs vs remaining -->
     <div class="chart-card">
@@ -1551,8 +1556,28 @@ function isOnetimeInMonth(p,y,m){
 }
 // True if the payment counts toward the given month's totals (recurring active OR one-time scheduled)
 function paymentInMonth(p,y,m){ return p.onetime ? isOnetimeInMonth(p,y,m) : isActiveInMonth(p,y,m); }
-function costsForMonth(y,m){ return payments.filter(p=>paymentInMonth(p,y,m)).reduce((s,p)=>s+p.amount,0)+grocery+recreation+clothes+restaurant+other2; }
-function fixedCostsForMonth(y,m){ return payments.filter(p=>paymentInMonth(p,y,m)).reduce((s,p)=>s+p.amount,0); }
+// What-if simulation: ids in this set are excluded from Forecast charts/totals
+const simExcluded = new Set();
+function isInSim(p){ return !simExcluded.has(p.id); }
+function resetSim(){ simExcluded.clear(); updateSimBanner(); if (activeView==='forecast') renderForecast(); }
+window.resetSim = resetSim;
+function toggleSim(id){
+  if (simExcluded.has(id)) simExcluded.delete(id);
+  else simExcluded.add(id);
+  updateSimBanner();
+  if (activeView==='forecast') renderForecast();
+}
+window.toggleSim = toggleSim;
+function updateSimBanner(){
+  const b = document.getElementById('simBanner');
+  if (!b) return;
+  const t = document.getElementById('simBannerText');
+  if (simExcluded.size === 0) { b.style.display = 'none'; return; }
+  b.style.display = 'flex';
+  if (t) t.textContent = `🔬 Simulating without ${simExcluded.size} payment${simExcluded.size===1?'':'s'}`;
+}
+function costsForMonth(y,m){ return payments.filter(p=>paymentInMonth(p,y,m)&&isInSim(p)).reduce((s,p)=>s+p.amount,0)+grocery+recreation+clothes+restaurant+other2; }
+function fixedCostsForMonth(y,m){ return payments.filter(p=>paymentInMonth(p,y,m)&&isInSim(p)).reduce((s,p)=>s+p.amount,0); }
 function nextOcc(day){ const n=today(),d=new Date(n.getFullYear(),n.getMonth(),day); if(d<=n) d.setMonth(d.getMonth()+1); return d; }
 function daysUntil(dt){ const n=today(); return Math.ceil((dt-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/864e5); }
 // Returns the next calendar date the payment is due. For recurring, the next monthly occurrence.
@@ -1911,6 +1936,7 @@ function renderForecast(){
   drawDonut(data[0]); renderMonthCards(data); renderActualChart();
   try { drawSpendingTrends(); } catch(e) { console.error('drawSpendingTrends failed:', e); }
   applyChartCollapseState();
+  updateSimBanner();
 }
 const collapsedCharts = new Set(JSON.parse(localStorage.getItem('bgt_collapsed_charts')||'[]'));
 function applyChartCollapseState(){
@@ -2011,7 +2037,7 @@ function drawDebtChart(){
   const card=document.getElementById('debtCard');
   // Anchor at the selected budget month so the chart matches the rest of the app.
   const now=new Date(budgetMonth.year, budgetMonth.month, 1);
-  const installments=payments.filter(p=>p.isDebt && !p.onetime && parseEndDate(p.endDate));
+  const installments=payments.filter(p=>p.isDebt && !p.onetime && parseEndDate(p.endDate) && isInSim(p));
   if(installments.length===0){
     if(card){
       card.style.display='';
@@ -2217,11 +2243,11 @@ function drawDonut(d){
 
   // Build categories including custom ones
   const builtIn=[
-    {label:'O2',        color:'#7c6fef', val:payments.filter(p=>!p.onetime&&p.cat==='o2').reduce((s,p)=>s+p.amount,0)},
-    {label:'Installm.', color:'#f5a623', val:payments.filter(p=>!p.onetime&&p.cat==='install').reduce((s,p)=>s+p.amount,0)},
-    {label:'Subs',      color:'#5b93ef', val:payments.filter(p=>!p.onetime&&p.cat==='sub').reduce((s,p)=>s+p.amount,0)},
-    {label:'PayPal',    color:'#00b4d8', val:payments.filter(p=>!p.onetime&&p.cat==='paypal').reduce((s,p)=>s+p.amount,0)},
-    {label:'Home',      color:'#3ecf8e', val:payments.filter(p=>!p.onetime&&p.cat==='home').reduce((s,p)=>s+p.amount,0)},
+    {label:'O2',        color:'#7c6fef', val:payments.filter(p=>!p.onetime&&p.cat==='o2'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
+    {label:'Installm.', color:'#f5a623', val:payments.filter(p=>!p.onetime&&p.cat==='install'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
+    {label:'Subs',      color:'#5b93ef', val:payments.filter(p=>!p.onetime&&p.cat==='sub'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
+    {label:'PayPal',    color:'#00b4d8', val:payments.filter(p=>!p.onetime&&p.cat==='paypal'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
+    {label:'Home',      color:'#3ecf8e', val:payments.filter(p=>!p.onetime&&p.cat==='home'&&isInSim(p)).reduce((s,p)=>s+p.amount,0)},
     {label:'Grocery',   color:'#f5a623', val:grocery},
     {label:'Recreation',color:'#38bdf8', val:recreation},
     {label:'Clothes',   color:'#b57bee', val:clothes},
@@ -2230,7 +2256,7 @@ function drawDonut(d){
   ];
   const custom=customCategories.map(c=>({
     label:c.label, color:c.color,
-    val:payments.filter(p=>!p.onetime&&p.cat===c.id).reduce((s,p)=>s+p.amount,0)
+    val:payments.filter(p=>!p.onetime&&p.cat===c.id&&isInSim(p)).reduce((s,p)=>s+p.amount,0)
   }));
   const cats=[...builtIn,...custom].filter(c=>c.val>0);
   const total=cats.reduce((s,c)=>s+c.val,0);
@@ -2309,7 +2335,12 @@ function renderMonthCards(data){
       </div>
       <div class="mc-bar"><div class="mc-bar-fill" style="width:${pct}%;background:${d.net>=0?'#3ecf8e':'#ff4e4e'}"></div></div>
       <div class="mc-breakdown">
-        ${d.payments.map(p=>`<div class="bdr ${p.active?'':'expired'}"><div class="bdr-left"><div class="bdr-dot ${catDot(p.cat)}"></div>${p.name}${!p.active?' <span style="font-size:9px;color:var(--muted)">(ends)</span>':''}</div><div class="bdr-amt">${p.active?fmt(p.amount):'—'}</div></div>`).join('')}
+        ${d.payments.map(p=>{
+          const excluded = simExcluded.has(p.id);
+          const cls = `bdr${p.active?'':' expired'}${excluded?' sim-off':''}`;
+          const label = !p.active ? ' <span style="font-size:9px;color:var(--muted)">(ends)</span>' : (excluded?' <span style="font-size:9px;color:var(--accent2)">(sim-off)</span>':'');
+          return `<div class="${cls}" onclick="event.stopPropagation();toggleSim(${p.id})" style="cursor:pointer"><div class="bdr-left"><div class="bdr-dot ${catDot(p.cat)}"></div>${p.name}${label}</div><div class="bdr-amt">${(p.active&&!excluded)?fmt(p.amount):'—'}</div></div>`;
+        }).join('')}
         <div class="bdr"><div class="bdr-left"><div class="bdr-dot dot-grocery"></div>Groceries</div><div class="bdr-saving">${fmt(d.grocery)}</div></div>
         <button class="collapse-btn" type="button">↑ Collapse</button>
       </div>`;
