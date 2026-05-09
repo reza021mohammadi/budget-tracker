@@ -1927,19 +1927,37 @@ function drawDebtChart(){
     };
   }).filter(Boolean).sort((a,b)=>a.monthsLeft-b.monthsLeft);
   const breakdown = document.getElementById('debtBreakdown');
-  breakdown.innerHTML = items.length === 0 ? '' :
-    `<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:2px">Debt items (${items.length})</div>` +
-    items.map(it=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:8px;padding:8px 10px;gap:8px">
-        <div style="min-width:0;flex:1">
-          <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${it.name}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px">${fmt(it.amount)}/mo · ${it.monthsLeft} payment${it.monthsLeft===1?'':'s'} left · paid off ${it.payoff}</div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-family:'DM Serif Display',serif;font-size:14px;color:var(--orange)">${fmt(it.remaining)}</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:1px">remaining</div>
-        </div>
-      </div>`).join('');
+  if(items.length===0){
+    breakdown.innerHTML='';
+  } else {
+    const open = breakdown.dataset.open === '1';
+    breakdown.innerHTML =
+      `<div id="debtBreakdownHeader" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600">
+        <span>Debt items (${items.length})</span>
+        <span style="transition:transform .2s;transform:rotate(${open?180:0}deg);font-size:14px">▾</span>
+      </div>
+      <div id="debtBreakdownList" style="display:${open?'flex':'none'};flex-direction:column;gap:6px;margin-top:6px">
+        ${items.map(it=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:8px;padding:8px 10px;gap:8px">
+            <div style="min-width:0;flex:1">
+              <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${it.name}</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">${fmt(it.amount)}/mo · ${it.monthsLeft} payment${it.monthsLeft===1?'':'s'} left · paid off ${it.payoff}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-family:'DM Serif Display',serif;font-size:14px;color:var(--orange)">${fmt(it.remaining)}</div>
+              <div style="font-size:9px;color:var(--muted);margin-top:1px">remaining</div>
+            </div>
+          </div>`).join('')}
+      </div>`;
+    document.getElementById('debtBreakdownHeader').addEventListener('click', () => {
+      const list = document.getElementById('debtBreakdownList');
+      const isOpen = list.style.display !== 'none';
+      list.style.display = isOpen ? 'none' : 'flex';
+      breakdown.dataset.open = isOpen ? '0' : '1';
+      const chev = document.getElementById('debtBreakdownHeader').querySelector('span:last-child');
+      if (chev) chev.style.transform = `rotate(${isOpen?0:180}deg)`;
+    });
+  }
 }
 
 function drawBarChart(data){
