@@ -749,6 +749,20 @@ canvas{width:100%!important;display:block;}
       </div>
     </div>
 
+    <!-- Spending trends chart -->
+    <div class="chart-card" id="spendingTrendsCard">
+      <div class="chart-title">Spending Trends (last 6 months)</div>
+      <canvas id="spendingTrendsChart" height="180"></canvas>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>Groceries</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#38bdf8"></div>Recreation</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#b57bee"></div>Clothes</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f472b6"></div>Restaurant</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#7a7a90"></div>Other</div>
+      </div>
+      <div class="progress-label" style="margin-top:6px" id="spendingTrendsNote"></div>
+    </div>
+
     <!-- Month cards -->
     <div class="month-cards" id="monthCards"></div>
   </div>
@@ -1846,6 +1860,83 @@ function renderForecast(){
   drawBarChart(data); drawTrendChart(data);
   try { drawDebtChart(); } catch(e) { console.error('drawDebtChart failed:',e); }
   drawDonut(data[0]); renderMonthCards(data); renderActualChart();
+  try { drawSpendingTrends(); } catch(e) { console.error('drawSpendingTrends failed:', e); }
+}
+function drawSpendingTrends(){
+  const canvas = document.getElementById('spendingTrendsChart');
+  if (!canvas) return;
+  const months = 6;
+  const data = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(budgetMonth.year, budgetMonth.month - i, 1);
+    const key = spendingKey(d.getFullYear(), d.getMonth());
+    const sp = spending[key] || {};
+    const cats = {
+      groceries: +sp.groceries||0,
+      recreation: +sp.recreation||0,
+      clothes: +sp.clothes||0,
+      restaurant: +sp.restaurant||0,
+      other2: +sp.other2||0,
+    };
+    const total = cats.groceries + cats.recreation + cats.clothes + cats.restaurant + cats.other2;
+    data.push({
+      label: d.toLocaleDateString('en-DE',{month:'short'}),
+      isCurrent: i === 0,
+      cats, total
+    });
+  }
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth, H = 180;
+  canvas.width = W*dpr; canvas.height = H*dpr; canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  const note = document.getElementById('spendingTrendsNote');
+  const totalAll = data.reduce((s,d) => s + d.total, 0);
+  if (totalAll === 0) {
+    note.textContent = 'No spending data yet — enter actuals on the Overview to see trends.';
+    return;
+  }
+  const pad = {top:14, bottom:32, left:42, right:10};
+  const cW = W - pad.left - pad.right, cH = H - pad.top - pad.bottom;
+  const maxV = Math.max(...data.map(d => d.total)) * 1.12 || 1;
+  const colors = {groceries:'#f5a623', recreation:'#38bdf8', clothes:'#b57bee', restaurant:'#f472b6', other2:'#7a7a90'};
+  const order = ['groceries','recreation','clothes','restaurant','other2'];
+  // Grid
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + cH - (i/4)*cH;
+    ctx.strokeStyle = '#2e2e3e'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W-pad.right, y); ctx.stroke();
+    ctx.fillStyle = '#7a7a90'; ctx.font = '9px DM Sans'; ctx.textAlign = 'right';
+    ctx.fillText(fmt(maxV*i/4).slice(0,8), pad.left-3, y+3);
+  }
+  // Bars
+  const gW = cW / data.length;
+  const bW = Math.min(gW * 0.55, 36);
+  data.forEach((d, idx) => {
+    const cx = pad.left + idx*gW + gW/2;
+    let yBase = pad.top + cH;
+    order.forEach(k => {
+      const v = d.cats[k];
+      if (v <= 0) return;
+      const h = (v / maxV) * cH;
+      ctx.fillStyle = colors[k];
+      ctx.fillRect(cx - bW/2, yBase - h, bW, h);
+      yBase -= h;
+    });
+    // Total label above bar
+    if (d.total > 0) {
+      ctx.fillStyle = '#f0f0f5'; ctx.font = '10px DM Sans'; ctx.textAlign = 'center';
+      ctx.fillText(fmt(d.total).slice(0,8), cx, pad.top + cH - (d.total/maxV)*cH - 4);
+    }
+    // Month label
+    ctx.fillStyle = d.isCurrent ? '#c8f044' : '#7a7a90';
+    ctx.font = d.isCurrent ? 'bold 10px DM Sans' : '10px DM Sans';
+    ctx.textAlign = 'center';
+    ctx.fillText(d.label, cx, H - pad.bottom + 12);
+  });
+  // Note
+  const filled = data.filter(d => d.total > 0).length;
+  const avg = totalAll / Math.max(1, filled);
+  note.textContent = `Avg ${fmt(avg)}/mo across ${filled} month${filled===1?'':'s'} of data.`;
 }
 function drawDebtChart(){
   const canvas=document.getElementById('debtChart');
