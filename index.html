@@ -36,7 +36,10 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .view{display:none;}.view.active{display:block;}
 
 /* CARDS */
-.summary-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px 0;}
+.summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 16px 0;}
+.summary-row .summary-card:not(.full-width){padding:11px 9px;}
+.summary-row .summary-card:not(.full-width) .card-label{font-size:9px;}
+.summary-row .summary-card:not(.full-width) .card-value{font-size:18px;}
 .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px;position:relative;overflow:hidden;}
 .summary-card.collapsible{cursor:pointer;}
 .card-value.inline-edit{cursor:text;outline:none;border-radius:8px;padding:2px 4px;margin-left:-4px;transition:background .15s;}
