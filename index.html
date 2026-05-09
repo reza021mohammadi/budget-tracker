@@ -3959,7 +3959,19 @@ async function requestNotifPermission() {
     if(!('serviceWorker' in navigator)){alert('Notifications enabled (in-app only — service worker unavailable).');return;}
     const swUrl=new URL('./firebase-messaging-sw.js',window.location.href).toString();
     const swReg=await navigator.serviceWorker.register(swUrl);
-    const token=await getToken(_messaging,{vapidKey:VAPID_KEY,serviceWorkerRegistration:swReg});
+    // iOS Safari occasionally returns "Load failed" on the first FCM token subscribe.
+    // Retry once after a short delay before giving up.
+    let token=null;
+    for (let attempt = 0; attempt < 2 && !token; attempt++) {
+      try {
+        token = await getToken(_messaging,{vapidKey:VAPID_KEY,serviceWorkerRegistration:swReg});
+      } catch(err) {
+        if (attempt === 1) throw err;
+        const transient = /load failed|messaging\/token-subscribe-failed|fetch failed|network/i.test(err && (err.message || ''));
+        if (!transient) throw err;
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
     if(!token){alert('Notifications enabled, but couldn\'t get a push token. Try reloading.');return;}
     if(_familyCode && _uid){
       const ua = navigator.userAgent.slice(0,200);
