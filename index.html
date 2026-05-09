@@ -38,6 +38,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 /* CARDS */
 .summary-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px 0;}
 .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px;position:relative;overflow:hidden;}
+.summary-card.collapsible{cursor:pointer;}
+.summary-card.collapsible .edit-row{display:none;}
+.summary-card.collapsible.expanded .edit-row{display:flex;margin-top:6px;}
 .summary-card.full-width,.summary-card.span-full{grid-column:1/-1;}
 .summary-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
 .summary-card.c-income::before{background:var(--green);}
@@ -541,7 +544,7 @@ canvas{width:100%!important;display:block;}
 <div class="view active" id="view-overview">
   <div class="summary-row">
     <!-- Income -->
-    <div class="summary-card c-income">
+    <div class="summary-card c-income collapsible" onclick="toggleEditCard(this,event)">
       <div class="card-label">Net Income</div>
       <div class="card-value cv-income" id="incomeDisplay">€0</div>
       <div class="edit-row">
@@ -550,7 +553,7 @@ canvas{width:100%!important;display:block;}
       </div>
     </div>
     <!-- Groceries -->
-    <div class="summary-card c-grocery">
+    <div class="summary-card c-grocery collapsible" onclick="toggleEditCard(this,event)">
       <div class="card-label">🛒 Groceries</div>
       <div class="card-value cv-grocery" id="groceryDisplay">€0</div>
       <div class="edit-row">
@@ -559,7 +562,7 @@ canvas{width:100%!important;display:block;}
       </div>
     </div>
     <!-- Recreation -->
-    <div class="summary-card c-recreation">
+    <div class="summary-card c-recreation collapsible" onclick="toggleEditCard(this,event)">
       <div class="card-label">🎉 Recreation</div>
       <div class="card-value cv-recreation" id="recreationDisplay">€0</div>
       <div class="edit-row">
@@ -568,7 +571,7 @@ canvas{width:100%!important;display:block;}
       </div>
     </div>
     <!-- Clothes -->
-    <div class="summary-card c-clothes">
+    <div class="summary-card c-clothes collapsible" onclick="toggleEditCard(this,event)">
       <div class="card-label">👗 Clothes</div>
       <div class="card-value cv-clothes" id="clothesDisplay">€0</div>
       <div class="edit-row">
@@ -577,7 +580,7 @@ canvas{width:100%!important;display:block;}
       </div>
     </div>
     <!-- Restaurant -->
-    <div class="summary-card c-restaurant">
+    <div class="summary-card c-restaurant collapsible" onclick="toggleEditCard(this,event)">
       <div class="card-label">🍽 Restaurant/Cafe</div>
       <div class="card-value cv-restaurant" id="restaurantDisplay">€0</div>
       <div class="edit-row">
@@ -586,7 +589,7 @@ canvas{width:100%!important;display:block;}
       </div>
     </div>
     <!-- Other -->
-    <div class="summary-card c-other2">
+    <div class="summary-card c-other2 collapsible" onclick="toggleEditCard(this,event)">
       <div class="card-label">📦 Other</div>
       <div class="card-value cv-other2" id="other2Display">€0</div>
       <div class="edit-row">
@@ -2445,8 +2448,27 @@ function updateField(f){
   if(f==='restaurant'){const v=parseFloat(document.getElementById('restaurantInput').value);if(!isNaN(v)&&v>=0){getBudget().restaurant=v; restaurant=v;}}
   if(f==='other2'   ){const v=parseFloat(document.getElementById('other2Input').value);    if(!isNaN(v)&&v>=0){getBudget().other2    =v; other2    =v;}}
   if(f==='buffer'){const v=parseFloat(document.getElementById('bufferInput').value);if(!isNaN(v)&&v>=0)bufferAmt=v;}
+  // Collapse the parent card after save (overview cards only)
+  const inputMap = {income:'incomeInput', grocery:'groceryInput', recreation:'recreationInput', clothes:'clothesInput', restaurant:'restaurantInput', other2:'other2Input'};
+  const inputId = inputMap[f];
+  if (inputId) {
+    const card = document.getElementById(inputId)?.closest('.summary-card.collapsible');
+    if (card) card.classList.remove('expanded');
+  }
   save(); render(); if(activeView==='forecast') renderForecast();
 }
+function toggleEditCard(card, e){
+  if (e && (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON')) return;
+  const opening = !card.classList.contains('expanded');
+  // Collapse all sibling collapsibles for a cleaner UX (one open at a time)
+  document.querySelectorAll('.summary-card.collapsible.expanded').forEach(c => c.classList.remove('expanded'));
+  if (opening) {
+    card.classList.add('expanded');
+    const input = card.querySelector('input');
+    if (input) setTimeout(() => { input.focus(); input.select(); }, 30);
+  }
+}
+window.toggleEditCard = toggleEditCard;
 function deletePayment(id){if(!confirm('Remove?'))return;payments=payments.filter(p=>p.id!==id);save();render();}
 function filterRange(r,el){activeRange=r;document.querySelectorAll('.range-pill').forEach(p=>p.classList.remove('active'));el.classList.add('active');render();}
 function switchTab(t,el){activeTab=t;document.querySelectorAll('.list-tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');render();}
