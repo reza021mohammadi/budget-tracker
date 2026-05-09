@@ -872,6 +872,7 @@ canvas{width:100%!important;display:block;}
     <div class="fs-sub">Use these only if something looks wrong. Local cache wipe re-downloads from the cloud.</div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:18px;display:flex;gap:8px;flex-wrap:wrap;">
       <button onclick="forceResync()"   style="flex:1;min-width:140px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer">↻ Force Re-Sync</button>
+      <button onclick="resetNotifications()" style="flex:1;min-width:140px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer">🔁 Reset Notifications</button>
       <button onclick="clearLocalCache()" style="flex:1;min-width:140px;background:rgba(255,78,78,.1);border:1px solid rgba(255,78,78,.3);border-radius:8px;padding:8px;color:var(--danger);font-size:12px;font-weight:700;cursor:pointer">⚠️ Clear Local Cache</button>
     </div>
 
@@ -2722,6 +2723,39 @@ function clearLocalCache(){
   location.reload();
 }
 window.clearLocalCache = clearLocalCache;
+async function resetNotifications(){
+  if (!confirm('Reset notifications? This unregisters the current service worker and removes this device\'s push tokens, then asks for permission again.')) return;
+  try {
+    // 1. Unregister all service workers
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) { try { await r.unregister(); } catch(e){} }
+    }
+    // 2. Remove push tokens for this device from Firestore
+    if (_db && _familyCode) {
+      const ua = navigator.userAgent.slice(0, 200);
+      const deviceKey = (ua.match(/^[^)]+\)/) || [ua])[0];
+      const snap = await getDocs(collection(_db, 'households', _familyCode, 'pushTokens'));
+      for (const d of snap.docs) {
+        const data = d.data() || {};
+        const otherKey = (((data.ua || '').match(/^[^)]+\)/)) || [data.ua || ''])[0];
+        if (otherKey === deviceKey) {
+          try { await deleteDoc(doc(_db, 'households', _familyCode, 'pushTokens', d.id)); } catch(e){}
+        }
+      }
+    }
+    // 3. Clear local notif flag
+    localStorage.removeItem('bgt_notif');
+    // 4. Re-register from scratch
+    alert('Reset complete. Tap the 🔔 to re-enable.');
+    const btn = document.getElementById('notifBtn');
+    if (btn) btn.textContent = '🔔';
+  } catch(e) {
+    console.error('Reset notifications failed:', e);
+    alert('Reset failed: ' + (e.message || e));
+  }
+}
+window.resetNotifications = resetNotifications;
 function renderExport(){
   renderNotifPrefs();
   renderSettingsExtras();
