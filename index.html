@@ -1371,17 +1371,35 @@ function startRealtimeSync() {
   _firstSyncDone = false;
   // Live listener on the household doc itself — picks up session.kicked
   // changes the moment the admin sets them, without waiting for visibility.
-  _hhUnsub = onSnapshot(doc(_db, 'households', _familyCode), (snap) => {
+  _hhUnsub = onSnapshot(doc(_db, 'households', _familyCode), async (snap) => {
     if (!snap.exists()) return;
     const sessions = (snap.data() || {}).sessions || {};
     const did = localStorage.getItem('bgt_did');
     if (!did) return;
-    const me = sessions[`${_uid}_${did}`];
+    const myKey = `${_uid}_${did}`;
+    const me = sessions[myKey];
     if (me && me.kicked) {
-      try { if (_unsubscribe) _unsubscribe(); } catch(e) {}
-      try { if (_hhUnsub) _hhUnsub(); } catch(e) {}
+      // Stop listeners first so the cleanup write doesn't bounce back
+      try { if (_unsubscribe) _unsubscribe(); _unsubscribe = null; } catch(e) {}
+      try { if (_hhUnsub) _hhUnsub(); _hhUnsub = null; } catch(e) {}
+      // Delete own session entry from the household so the admin's list updates immediately
+      try {
+        const upd = { ...sessions };
+        delete upd[myKey];
+        await setDoc(doc(_db, 'households', _familyCode), { sessions: upd }, { merge: true });
+      } catch(e) { /* ignore — auth might already be revoked */ }
+      // Also remove this device's push token doc, if any
+      try {
+        const tokSnap = await getDocs(collection(_db, 'households', _familyCode, 'pushTokens'));
+        for (const d of tokSnap.docs) {
+          const t = d.data() || {};
+          if (t.uid === _uid && /^[^)]+\)/.test(t.ua || '') && (t.ua || '').match(/^[^)]+\)/)[0] === (navigator.userAgent || '').match(/^[^)]+\)/)?.[0]) {
+            try { await deleteDoc(doc(_db, 'households', _familyCode, 'pushTokens', d.id)); } catch(e) {}
+          }
+        }
+      } catch(e) {}
       Object.keys(localStorage).filter(k => k.startsWith('bgt_')).forEach(k => localStorage.removeItem(k));
-      try { signOut(_auth); } catch(e) {}
+      try { await signOut(_auth); } catch(e) {}
       alert('This device was signed out by the household admin.');
       location.reload();
     }
@@ -2898,6 +2916,8 @@ async function renderHouseholdMembers(){
     const sessions = data.sessions || {};
     Object.values(sessions).forEach(s => {
       if (!s || !s.uid) return;
+      // Hide kicked sessions — the device has been signed out, no point listing it
+      if (s.kicked) return;
       (devicesByUid[s.uid] ||= []).push({
         ua: s.ua || '',
         createdAt: s.firstSeen || s.lastSeen || '',
