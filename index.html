@@ -120,6 +120,8 @@ body.high-contrast .nav-tab.active{background:rgba(200,240,68,.18);color:var(--a
 .summary-row .summary-card.half-row .card-value{font-size:18px;margin-top:3px;}
 .summary-row .summary-card.half-row .card-sub{font-size:10px;margin-top:2px;}
 .summary-card.collapsible{cursor:pointer;}
+.range-chip{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;transition:all .15s;}
+.range-chip.active{background:rgba(200,240,68,.12);border-color:var(--accent);color:var(--accent);}
 .field-error{font-size:11px;color:var(--danger);margin-top:4px;display:none;}
 .field-error.show{display:block;}
 .form-input.invalid{border-color:var(--danger) !important;}
@@ -625,6 +627,16 @@ canvas{width:100%!important;display:block;}
   📡 You're offline — changes will sync when reconnected
 </div>
 
+<!-- What's new sheet -->
+<div class="modal-overlay" id="whatsNewSheet" onclick="closeOnBg(event,'whatsNewSheet')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✨ What's new</div>
+    <div id="whatsNewBody" style="font-size:13px;color:var(--text);line-height:1.5;max-height:60vh;overflow-y:auto"></div>
+    <button class="btn-submit" onclick="dismissWhatsNew()">Got it</button>
+  </div>
+</div>
+
 <!-- ══ BUFFER WARNING ══ -->
 <div class="buffer-warning" id="bufferWarning">
   ⚠️ <span id="bufferMsg">Remaining is below your buffer threshold.</span>
@@ -685,6 +697,7 @@ canvas{width:100%!important;display:block;}
         <div class="card-sub" id="costBreakdown"></div>
         <div class="progress-bar"><div class="progress-fill pf-costs" id="costFill" style="width:0%"></div></div>
         <div class="progress-label" id="costPct"></div>
+        <div id="costTrend" style="font-size:11px;margin-top:4px;display:none"></div>
         <div id="stillOwedRow" style="display:none;border-top:1px solid var(--border);margin-top:10px;padding-top:8px;display:flex;align-items:center;justify-content:space-between;">
           <div>
             <div style="font-size:11px;color:var(--muted)">Still owed this month</div>
@@ -842,7 +855,13 @@ canvas{width:100%!important;display:block;}
 
     <!-- Spending trends chart -->
     <div class="chart-card" id="spendingTrendsCard">
-      <div class="chart-title">Spending Trends (last 6 months)</div>
+      <div class="chart-title">Spending Trends</div>
+      <div id="spendingRangeChips" style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+        <button class="range-chip" data-months="3" onclick="setSpendingRange(3)">3 mo</button>
+        <button class="range-chip active" data-months="6" onclick="setSpendingRange(6)">6 mo</button>
+        <button class="range-chip" data-months="12" onclick="setSpendingRange(12)">12 mo</button>
+        <button class="range-chip" data-months="24" onclick="setSpendingRange(24)">24 mo</button>
+      </div>
       <canvas id="spendingTrendsChart" height="180"></canvas>
       <div class="chart-legend">
         <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>Groceries</div>
@@ -1843,6 +1862,52 @@ function categorySparkline(cat, color){
   return `<svg width="${W}" height="${H}" style="display:inline-block;vertical-align:middle;flex-shrink:0;opacity:.85"><polyline fill="none" stroke="${color||'currentColor'}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" points="${points}"/></svg>`;
 }
 
+// ════════ WHAT'S NEW ════════
+const APP_VERSION_CURRENT = 'v1.7.0';
+const RELEASE_NOTES = {
+  'v1.7.0': [
+    '👑 Household admin role with member list',
+    '📱 Track every signed-in device per member',
+    '✖️ Force sign-out a specific device remotely',
+    '✏️ Manually label members and their email',
+  ],
+  'v1.6.0': [
+    '📍 iOS-style fixed bottom navigation',
+    '💬 Toast notifications replace alert pop-ups',
+    '🔢 Animated number transitions on all totals',
+    '🎢 Sparklines next to each category total',
+    '🔬 Tap a payment in Forecast to simulate cancelling',
+    '🌗 High-contrast mode in Settings',
+    '📤 Share Backup to iCloud Drive / Files',
+    '👈 Swipe between months on Overview / Forecast / Payments',
+  ],
+};
+function showWhatsNew(versionsToShow){
+  const body = document.getElementById('whatsNewBody');
+  if (!body) return;
+  body.innerHTML = versionsToShow
+    .filter(v => RELEASE_NOTES[v])
+    .map(v => `<div style="margin-bottom:14px"><div style="font-weight:700;color:var(--accent);margin-bottom:6px">${v}</div><ul style="padding-left:18px;margin:0">${RELEASE_NOTES[v].map(line => `<li style="margin-bottom:4px">${line}</li>`).join('')}</ul></div>`)
+    .join('');
+  document.getElementById('whatsNewSheet').classList.add('open');
+}
+function dismissWhatsNew(){
+  document.getElementById('whatsNewSheet').classList.remove('open');
+  localStorage.setItem('bgt_seen_version', APP_VERSION_CURRENT);
+}
+window.dismissWhatsNew = dismissWhatsNew;
+function checkWhatsNew(){
+  const seen = localStorage.getItem('bgt_seen_version');
+  if (seen === APP_VERSION_CURRENT) return;
+  // First-ever install: mark as seen but skip the modal
+  if (!seen) { localStorage.setItem('bgt_seen_version', APP_VERSION_CURRENT); return; }
+  // Show all release notes from versions newer than what they last saw
+  const allVersions = Object.keys(RELEASE_NOTES);
+  const newer = allVersions.filter(v => v > seen);
+  if (newer.length) setTimeout(() => showWhatsNew(newer), 800);
+}
+setTimeout(checkWhatsNew, 1000);
+
 // ════════ NETWORK STATUS ════════
 function updateOnlineState(){
   const banner = document.getElementById('offlineBanner');
@@ -1874,6 +1939,34 @@ document.addEventListener('focusin', (e) => {
     try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(e) {}
   }, 320);
 });
+
+// ════════ EDGE-SWIPE BACK (dismiss any open modal) ════════
+(() => {
+  let sx = 0, sy = 0, started = false;
+  document.addEventListener('touchstart', e => {
+    started = false;
+    if (e.touches.length !== 1) return;
+    if (e.touches[0].clientX > 24) return; // must start at the left edge
+    const open = document.querySelector('.modal-overlay.open');
+    if (!open) return;
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+    started = true;
+  }, {passive:true});
+  document.addEventListener('touchend', e => {
+    if (!started) return;
+    started = false;
+    const ex = (e.changedTouches[0] || {}).clientX || sx;
+    const ey = (e.changedTouches[0] || {}).clientY || sy;
+    if (ex - sx > 80 && Math.abs(ey - sy) < 60) {
+      const open = document.querySelector('.modal-overlay.open');
+      if (open) {
+        open.classList.remove('open');
+        buzz(8);
+      }
+    }
+  });
+})();
 
 // ════════ HAPTIC FEEDBACK ════════
 function buzz(pattern = 10){
@@ -2135,6 +2228,29 @@ function render(){
 
   // Total costs
   animateValue(document.getElementById('totalCosts'), total);
+  // Month-over-month trend on Total Costs
+  (() => {
+    const tEl = document.getElementById('costTrend');
+    if (!tEl) return;
+    const prevDate = new Date(budgetMonth.year, budgetMonth.month - 1, 1);
+    const prevKey = budgetKey(prevDate.getFullYear(), prevDate.getMonth());
+    const prevB = monthlyBudgets[prevKey];
+    if (!prevB) { tEl.style.display = 'none'; return; }
+    const prevVar = (prevB.grocery||0)+(prevB.recreation||0)+(prevB.clothes||0)+(prevB.restaurant||0)+(prevB.other2||0);
+    const prevAuto = (prevB.netIncome||0) * (autoSetasidePct||0) / 100;
+    const prevFixed = fixedCostsForMonth(prevDate.getFullYear(), prevDate.getMonth());
+    const prevTotal = prevFixed + prevVar + prevAuto;
+    if (prevTotal <= 0) { tEl.style.display = 'none'; return; }
+    const delta = total - prevTotal;
+    const pct = (delta / prevTotal) * 100;
+    if (Math.abs(pct) < 0.5) { tEl.style.display = 'none'; return; }
+    const up = delta > 0;
+    const arrow = up ? '▲' : '▼';
+    const color = up ? 'var(--danger)' : 'var(--green)';
+    const prevLabel = prevDate.toLocaleDateString('en-DE',{month:'short'});
+    tEl.style.display = 'block';
+    tEl.innerHTML = `<span style="color:${color};font-weight:700">${arrow} ${Math.abs(pct).toFixed(0)}%</span> <span style="color:var(--muted)">vs ${prevLabel} (${up?'+':'−'}${fmt(Math.abs(delta))})</span>`;
+  })();
   document.getElementById('costBreakdown').textContent=`Fixed ${fmt(fixed)} + Groceries ${fmt(grocery)} + Recreation ${fmt(recreation)} + Clothes ${fmt(clothes)} + Restaurant ${fmt(restaurant)} + Other ${fmt(other2)}${autoSetaside>0?' + Set-aside '+fmt(autoSetaside)+' ('+autoSetasidePct+'%)':''}`;
   document.getElementById('costFill').style.width=pct+'%';
   document.getElementById('costPct').textContent=pct.toFixed(1)+'% of net income';
@@ -2423,10 +2539,18 @@ function applyChartCollapseState(){
     title.dataset.collapseBound = '1';
   });
 }
+let _spendingRangeMonths = parseInt(localStorage.getItem('bgt_st_range') || '6', 10);
+function setSpendingRange(n){
+  _spendingRangeMonths = n;
+  localStorage.setItem('bgt_st_range', String(n));
+  document.querySelectorAll('#spendingRangeChips .range-chip').forEach(c => c.classList.toggle('active', parseInt(c.dataset.months,10) === n));
+  if (typeof drawSpendingTrends === 'function') drawSpendingTrends();
+}
+window.setSpendingRange = setSpendingRange;
 function drawSpendingTrends(){
   const canvas = document.getElementById('spendingTrendsChart');
   if (!canvas) return;
-  const months = 6;
+  const months = _spendingRangeMonths || 6;
   const data = [];
   for (let i = months - 1; i >= 0; i--) {
     const d = new Date(budgetMonth.year, budgetMonth.month - i, 1);
@@ -4836,6 +4960,8 @@ document.getElementById('bufferInput').value=bufferAmt||'';
 // Apply theme
 if(isLightMode){ document.body.classList.add('light-mode'); document.getElementById('themeBtn').textContent='☀️'; }
 if(localStorage.getItem('bgt_hc')==='1') document.body.classList.add('high-contrast');
+// Apply saved Spending Trends range chip selection
+document.querySelectorAll('#spendingRangeChips .range-chip').forEach(c => c.classList.toggle('active', parseInt(c.dataset.months,10) === _spendingRangeMonths));
 // Notification button state
 // On iOS Safari PWA, Notification.permission sometimes resolves to 'default' on a
 // cold reload even when the user previously granted permission. Trust our own
