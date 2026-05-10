@@ -2001,18 +2001,10 @@ document.addEventListener('focusin', (e) => {
       const open = document.querySelector('.modal-overlay.open');
       if (open) {
         open.classList.remove('open');
-        buzz(8);
       }
     }
   });
 })();
-
-// ════════ HAPTIC FEEDBACK ════════
-function buzz(pattern = 10){
-  if (!navigator.vibrate) return;
-  try { navigator.vibrate(pattern); } catch(e) {}
-}
-window.buzz = buzz;
 
 // ════════ ANIMATED NUMBERS ════════
 function animateValue(el, to, duration = 500){
@@ -2042,10 +2034,7 @@ function toast(msg, type='info'){
   const stack = document.getElementById('toastStack');
   if (!stack) { console.log('[toast]', msg); return; }
   // Critical-action haptics
-  if (type === 'success') buzz(10);
-  else if (type === 'error') buzz([20, 30, 20]);
-  else if (type === 'warning') buzz(18);
-  const el = document.createElement('div');
+  if (type === 'success') else if (type === 'error') else if (type === 'warning') const el = document.createElement('div');
   el.className = 'toast toast-' + type;
   el.textContent = msg;
   stack.appendChild(el);
@@ -3672,7 +3661,7 @@ function toggleEditCard(card, e){
   }
 }
 window.toggleEditCard = toggleEditCard;
-function deletePayment(id){if(!confirm('Remove?'))return;buzz([15,30,15]);payments=payments.filter(p=>p.id!==id);save();render();}
+function deletePayment(id){if(!confirm('Remove?'))return;payments=payments.filter(p=>p.id!==id);save();render();}
 function filterRange(r,el){activeRange=r;document.querySelectorAll('.range-pill').forEach(p=>p.classList.remove('active'));el.classList.add('active');render();}
 function switchTab(t,el){activeTab=t;document.querySelectorAll('.list-tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');render();}
 function filterTag(t,el){activeTag=t;document.querySelectorAll('.tag-chip').forEach(x=>{ if(x.id!=='archivedChip') x.classList.remove('active'); });el.classList.add('active');render();}
@@ -3786,7 +3775,6 @@ function togglePaid(id){
   const arr=monthlyBudgets[key].paidIds;
   const idx=arr.indexOf(id);
   if(idx>=0) arr.splice(idx,1); else arr.push(id);
-  buzz(8);
   save();render();
 }
 window.togglePaid=togglePaid;
@@ -3848,7 +3836,7 @@ function addPayment(){
   if (!name) setErr('fName', 'Enter a name');
   if (isNaN(amount) || amount <= 0) setErr('fAmount', 'Enter an amount greater than 0');
   if (!onetime && (isNaN(day) || day < 1 || day > 31)) setErr('fDay', 'Day must be 1–31');
-  if (invalid) { buzz([15,40,15]); return; }
+  if (invalid) { return; }
   // Handle new custom category
   if(cat==='__new__'){
     const newLabel=document.getElementById('newCategoryInput').value.trim();
@@ -4424,9 +4412,7 @@ window.toggleSelected = toggleSelected;
       const dx = ex - sx;
       const dt = performance.now() - t0;
       if (Math.abs(dx) > 90 && dt < 700) {
-        changeBudgetMonth(dx < 0 ? 1 : -1);
-        if (navigator.vibrate) try { navigator.vibrate(10); } catch(e) {}
-      }
+        changeBudgetMonth(dx < 0 ? 1 : -1);      }
     });
   });
 })();
@@ -4532,9 +4518,7 @@ function attachLongPress(el, id){
   const start = (x, y) => {
     startX = x; startY = y; fired = false;
     timer = setTimeout(() => {
-      timer = null; fired = true;
-      if (navigator.vibrate) try { navigator.vibrate(40); } catch(e) {}
-      enterSelectionMode(id);
+      timer = null; fired = true;      enterSelectionMode(id);
     }, 500);
   };
   const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
