@@ -239,11 +239,10 @@ body.high-contrast .nav-tab.active{background:rgba(200,240,68,.18);color:var(--a
 .section{padding:12px 16px 0;}
 .section-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;font-weight:600;margin-bottom:7px;}
 /* Sticky category headers when scrolling the payments list.
-   .section uses display:contents so its children become direct
-   children of #listContainer — required for sticky to span sections. */
-#view-list .section{display:contents;}
+   Headers and bodies are rendered as direct children of #listContainer
+   (no .section wrapper), so sticky works across the entire list. */
 #view-list #listContainer{padding:0 16px;}
-#view-list .section-header{position:sticky;top:0;background:var(--bg);z-index:5;padding:10px 0 8px;margin:0 !important;}
+#view-list .section-header{position:sticky;top:0;background:var(--bg);z-index:5;padding:10px 0 8px;margin:0;}
 #view-list .section-body{padding-bottom:6px;}
 .payment-item{display:flex;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:13px;margin-bottom:7px;gap:11px;animation:fadeIn .25s ease both;}
 .payment-item.due-soon{border-color:rgba(245,208,32,.35);background:rgba(245,208,32,.03);}
@@ -2462,22 +2461,28 @@ function renderList(monthly, up){
   [...new Set(filtered.map(p=>p.cat))].forEach(cat=>{
     const items=filtered.filter(p=>p.cat===cat)
       .sort((a,b) => ((a.order ?? a.day) - (b.order ?? b.day)));
-    const sec=document.createElement('div');sec.className='section';
     const catTotal=items.reduce((s,p)=>s+p.amount,0);
     const collapsed=collapsedCats.has(cat);
     const reordering = reorderingCat === cat;
     const sparklineColor = (BUILTIN_CATS.find(b=>b.id===cat)||{}).color || (customCategories.find(c=>c.id===cat)||{}).color || 'var(--muted)';
-    sec.innerHTML=`<div class="section-header" onclick="toggleCatCollapse('${cat}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;user-select:none;gap:8px">
-      <div class="section-label" style="margin-bottom:0;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${catLabel(cat)} <span style="opacity:.55;font-weight:500;margin-left:4px">· ${items.length}</span></div>
+    // Append header + body directly to listContainer (no .section wrapper)
+    // so position:sticky on the header works across the whole list.
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'section-header';
+    headerDiv.style.cssText = 'cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;gap:8px';
+    headerDiv.onclick = () => toggleCatCollapse(cat);
+    headerDiv.innerHTML = `<div class="section-label" style="margin-bottom:0;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${catLabel(cat)} <span style="opacity:.55;font-weight:500;margin-left:4px">· ${items.length}</span></div>
       ${categorySparkline(cat, sparklineColor)}
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
         <span style="font-size:12px;color:var(--text);font-weight:700">${fmt(catTotal)}</span>
         <button onclick="event.stopPropagation();toggleReorderMode('${cat}')" title="${reordering?'Done reordering':'Reorder items'}" style="background:${reordering?'rgba(200,240,68,.15)':'transparent'};border:1px solid ${reordering?'var(--accent)':'var(--border)'};border-radius:6px;padding:2px 6px;color:${reordering?'var(--accent)':'var(--muted)'};font-size:11px;font-weight:700;cursor:pointer">↕</button>
         <span style="display:inline-block;transition:transform .2s;transform:rotate(${collapsed?-90:0}deg);font-size:12px;color:var(--muted)">▾</span>
-      </div>
-    </div>
-    <div class="section-body" style="display:${collapsed?'none':'block'}"></div>`;
-    const body=sec.querySelector('.section-body');
+      </div>`;
+    container.appendChild(headerDiv);
+    const body = document.createElement('div');
+    body.className = 'section-body';
+    body.style.display = collapsed ? 'none' : 'block';
+    container.appendChild(body);
     items.forEach((p,i)=>{
       const div=document.createElement('div');
       const archived=!!p._archived;
@@ -2514,7 +2519,6 @@ function renderList(monthly, up){
         if (!selectionMode) attachSwipeDelete(div, p.id);
       }
     });
-    container.appendChild(sec);
   });
 }
 
