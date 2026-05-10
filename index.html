@@ -1375,7 +1375,7 @@ function startRealtimeSync() {
       _firstSyncDone = true;
       if (wasFirstSync) document.body.classList.remove('is-loading-cards');
       setSyncBadge('synced', '✅ Synced');
-      if (wasFirstSync) { checkBackupHealth(); autoCloudBackup(); ensureSelfMemberInfo(); recordSession(); }
+      if (wasFirstSync) { checkBackupHealth(); autoCloudBackup(); ensureSelfMemberInfo(); recordSession(); checkSessionKick(); }
     },
     (err) => {
       console.error('Realtime sync error:', err);
@@ -2991,21 +2991,51 @@ async function removeMember(uid){
 }
 window.removeMember = removeMember;
 async function removeDevice(uid, deviceId){
-  if (!confirm('Forget this device entry from the list?\n\n(Won\'t sign the user out — they\'ll register again next time they open the app.)')) return;
+  if (!confirm('Sign this device out?\n\nThe device will be force-logged-out the next time it syncs (or immediately if it\'s currently open). The user can sign back in afterwards.')) return;
   try {
     const sessionKey = `${uid}_${deviceId}`;
     const snap = await getDoc(doc(_db, 'households', _familyCode));
     if (!snap.exists()) return;
     const sessions = { ...((snap.data() || {}).sessions || {}) };
-    delete sessions[sessionKey];
-    await setDoc(doc(_db, 'households', _familyCode), { sessions }, { merge: true });
-    toast('Device entry removed', 'success');
+    if (sessions[sessionKey]) {
+      // Mark as kicked. The device's own client checks this flag on every
+      // sync / visibilitychange and self-signs-out when it sees it.
+      sessions[sessionKey] = { ...sessions[sessionKey], kicked: true, kickedAt: new Date().toISOString() };
+      await setDoc(doc(_db, 'households', _familyCode), { sessions }, { merge: true });
+    }
+    toast('Device kicked — it will sign out on next sync', 'success');
     renderHouseholdMembers();
   } catch(e) {
     toast('Failed: ' + (e.message || e), 'error');
   }
 }
 window.removeDevice = removeDevice;
+// Self-check: if THIS device's session was marked kicked by the admin,
+// sign out + wipe local cache + reload so we land on the sign-in screen.
+let _kickCheckRunning = false;
+async function checkSessionKick(){
+  if (_kickCheckRunning) return;
+  if (!_db || !_familyCode || !_uid) return;
+  const deviceId = localStorage.getItem('bgt_did');
+  if (!deviceId) return;
+  _kickCheckRunning = true;
+  try {
+    const snap = await getDoc(doc(_db, 'households', _familyCode));
+    const sessions = (snap.data() || {}).sessions || {};
+    const me = sessions[`${_uid}_${deviceId}`];
+    if (me && me.kicked) {
+      try { if (_unsubscribe) _unsubscribe(); } catch(e) {}
+      Object.keys(localStorage).filter(k => k.startsWith('bgt_')).forEach(k => localStorage.removeItem(k));
+      try { await signOut(_auth); } catch(e) {}
+      alert('This device was signed out by the household admin.');
+      location.reload();
+    }
+  } catch(e) {} finally { _kickCheckRunning = false; }
+}
+window.checkSessionKick = checkSessionKick;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') checkSessionKick();
+});
 async function claimAdmin(){
   if (!_db || !_familyCode || !_uid) return;
   // Hardcoded gate: only the configured admin email can claim ownership.
