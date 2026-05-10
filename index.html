@@ -2842,25 +2842,48 @@ async function renderHouseholdMembers(){
     // Owner: explicit field, else first member, else creator (legacy)
     const owner = data.owner || (members[0] || data.createdBy);
     const isOwner = _uid === owner;
-    box.innerHTML = `<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin-bottom:2px">Members (${members.length})</div>` +
-      members.map(uid => {
-        const m = info[uid] || {};
-        const isMe = uid === _uid;
-        const isOwnerRow = uid === owner;
-        const display = m.name || m.email || (isMe ? (_auth.currentUser?.displayName || _auth.currentUser?.email || 'You') : (uid.slice(0, 10) + '…'));
-        return `<div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;padding:7px 10px">
-          <span style="font-size:14px;flex-shrink:0">${isOwnerRow ? '👑' : '👤'}</span>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${display}${isMe ? ' <span style="font-size:10px;color:var(--accent);font-weight:700;margin-left:4px">YOU</span>' : ''}${isOwnerRow ? ' <span style="font-size:10px;color:var(--orange);font-weight:700;margin-left:4px">ADMIN</span>' : ''}</div>
-            ${m.email && m.email !== display ? `<div style="font-size:10px;color:var(--muted);margin-top:1px">${m.email}</div>` : ''}
-          </div>
-          ${isOwner && !isMe ? `<button onclick="removeMember('${uid}')" style="background:rgba(255,78,78,.1);border:1px solid rgba(255,78,78,.3);border-radius:6px;padding:4px 8px;color:var(--danger);font-size:11px;font-weight:700;cursor:pointer">Remove</button>` : ''}
-        </div>`;
-      }).join('');
+    const header = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700">Members (${members.length})</div>
+      <button onclick="renderHouseholdMembers()" title="Refresh" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:2px 8px;color:var(--muted);font-size:11px;cursor:pointer">↻</button>
+    </div>`;
+    box.innerHTML = header + members.map(uid => {
+      const m = info[uid] || {};
+      const isMe = uid === _uid;
+      const isOwnerRow = uid === owner;
+      const display = m.name || m.email || (isMe ? (_auth.currentUser?.displayName || _auth.currentUser?.email || 'You') : 'Unnamed member');
+      const subline = m.email && m.email !== display ? m.email : `id ${uid.slice(0, 8)}…`;
+      return `<div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;padding:7px 10px">
+        <span style="font-size:14px;flex-shrink:0">${isOwnerRow ? '👑' : '👤'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${display}${isMe ? ' <span style="font-size:10px;color:var(--accent);font-weight:700;margin-left:4px">YOU</span>' : ''}${isOwnerRow ? ' <span style="font-size:10px;color:var(--orange);font-weight:700;margin-left:4px">ADMIN</span>' : ''}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${subline}</div>
+        </div>
+        ${isOwner ? `<button onclick="renameMember('${uid}')" title="Rename" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 7px;color:var(--muted);font-size:11px;cursor:pointer">✏️</button>` : ''}
+        ${isOwner && !isMe ? `<button onclick="removeMember('${uid}')" style="background:rgba(255,78,78,.1);border:1px solid rgba(255,78,78,.3);border-radius:6px;padding:4px 8px;color:var(--danger);font-size:11px;font-weight:700;cursor:pointer">Remove</button>` : ''}
+      </div>`;
+    }).join('');
   } catch(e) {
     box.innerHTML = `<div style="font-size:12px;color:var(--danger)">Failed to load members: ${e.message}</div>`;
   }
 }
+async function renameMember(uid){
+  if (!_db || !_familyCode) return;
+  try {
+    const snap = await getDoc(doc(_db, 'households', _familyCode));
+    if (!snap.exists()) return;
+    const info = (snap.data() || {}).memberInfo || {};
+    const current = (info[uid] || {}).name || (info[uid] || {}).email || '';
+    const newName = prompt('Member name:', current);
+    if (newName === null) return;
+    const updated = { ...(info[uid] || {}), name: newName.trim() };
+    await setDoc(doc(_db, 'households', _familyCode), { memberInfo: { [uid]: updated } }, { merge: true });
+    renderHouseholdMembers();
+    toast('Member renamed', 'success');
+  } catch(e) {
+    toast('Rename failed: ' + (e.message || e), 'error');
+  }
+}
+window.renameMember = renameMember;
 window.renderHouseholdMembers = renderHouseholdMembers;
 async function removeMember(uid){
   if (uid === _uid) { toast('You can\'t remove yourself — use Leave Household', 'warning'); return; }
