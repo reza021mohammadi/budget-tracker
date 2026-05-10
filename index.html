@@ -241,8 +241,18 @@ body.high-contrast .nav-tab.active{background:rgba(200,240,68,.18);color:var(--a
 /* Sticky category headers when scrolling the payments list.
    Headers and bodies are rendered as direct children of #listContainer
    (no .section wrapper), so sticky works across the entire list. */
-#view-list #listContainer{padding:0 16px;}
-#view-list .section-header{position:sticky;top:0;background:var(--bg);z-index:5;padding:10px 0 8px;margin:0;}
+#view-list #listContainer{padding:0 16px;overflow:visible;}
+#view-list .section-header{
+  position:-webkit-sticky !important;
+  position:sticky !important;
+  top:0 !important;
+  background:var(--bg) !important;
+  z-index:10 !important;
+  padding:10px 0 8px !important;
+  margin:0 !important;
+  /* Prevents Safari from creating a new scroll/clip context that breaks sticky */
+  will-change:transform;
+}
 #view-list .section-body{padding-bottom:6px;}
 .payment-item{display:flex;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:13px;margin-bottom:7px;gap:11px;animation:fadeIn .25s ease both;}
 .payment-item.due-soon{border-color:rgba(245,208,32,.35);background:rgba(245,208,32,.03);}
