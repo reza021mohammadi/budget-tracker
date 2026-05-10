@@ -1181,6 +1181,7 @@ let _messaging = null;
 // Hardcoded admin email — only this account is allowed to claim/transfer admin
 const ADMIN_EMAIL = 'reza021mohammadi@gmail.com';
 let _db = null, _uid = null, _isSaving = false, _unsubscribe = null, _auth = null, _familyCode = null;
+let _hhUnsub = null; // listener on the household doc itself (for session kicks)
 // Set to true after the first snapshot fires for the current household.
 // Until then, refuse to push local state to Firestore — prevents the race
 // where default arrays clobber real cloud data on slow/cold loads.
@@ -1307,6 +1308,7 @@ async function leaveHousehold() {
     await setDoc(doc(_db, 'users', _uid, 'profile', 'main'), { familyCode: '' });
     // Stop real-time listener
     if (_unsubscribe) { _unsubscribe(); _unsubscribe = null; }
+    if (_hhUnsub) { _hhUnsub(); _hhUnsub = null; }
     _familyCode = null;
     // Hide the badge
     const el = document.getElementById('familyCodeBadge');
@@ -1365,7 +1367,25 @@ function applyCloudData(d) {
 function startRealtimeSync() {
   if (!_familyCode) return;
   if (_unsubscribe) _unsubscribe();
+  if (_hhUnsub) _hhUnsub();
   _firstSyncDone = false;
+  // Live listener on the household doc itself — picks up session.kicked
+  // changes the moment the admin sets them, without waiting for visibility.
+  _hhUnsub = onSnapshot(doc(_db, 'households', _familyCode), (snap) => {
+    if (!snap.exists()) return;
+    const sessions = (snap.data() || {}).sessions || {};
+    const did = localStorage.getItem('bgt_did');
+    if (!did) return;
+    const me = sessions[`${_uid}_${did}`];
+    if (me && me.kicked) {
+      try { if (_unsubscribe) _unsubscribe(); } catch(e) {}
+      try { if (_hhUnsub) _hhUnsub(); } catch(e) {}
+      Object.keys(localStorage).filter(k => k.startsWith('bgt_')).forEach(k => localStorage.removeItem(k));
+      try { signOut(_auth); } catch(e) {}
+      alert('This device was signed out by the household admin.');
+      location.reload();
+    }
+  }, (err) => { /* ignore */ });
   const docRef = doc(_db, 'households', _familyCode, 'data', 'main');
   _unsubscribe = onSnapshot(docRef,
     (snap) => {
@@ -1384,6 +1404,7 @@ function startRealtimeSync() {
         // Most likely the user was removed from the household by the admin.
         // Stop the listener, clear local profile, redirect to the family setup screen.
         if (_unsubscribe) { _unsubscribe(); _unsubscribe = null; }
+        if (_hhUnsub) { _hhUnsub(); _hhUnsub = null; }
         _familyCode = null;
         try { setDoc(doc(_db, 'users', _uid, 'profile', 'main'), { familyCode: '' }, { merge: true }).catch(() => {}); } catch(e) {}
         setSyncBadge('', '');
@@ -2997,12 +3018,14 @@ async function removeDevice(uid, deviceId){
     const snap = await getDoc(doc(_db, 'households', _familyCode));
     if (!snap.exists()) return;
     const sessions = { ...((snap.data() || {}).sessions || {}) };
-    if (sessions[sessionKey]) {
-      // Mark as kicked. The device's own client checks this flag on every
-      // sync / visibilitychange and self-signs-out when it sees it.
-      sessions[sessionKey] = { ...sessions[sessionKey], kicked: true, kickedAt: new Date().toISOString() };
-      await setDoc(doc(_db, 'households', _familyCode), { sessions }, { merge: true });
-    }
+    // Always write kicked, even if the prior session entry was missing
+    // (e.g., legacy device that was registered via pushTokens before
+    // session tracking existed). The flag itself is what counts.
+    sessions[sessionKey] = {
+      ...(sessions[sessionKey] || { uid, deviceId }),
+      kicked: true, kickedAt: new Date().toISOString()
+    };
+    await setDoc(doc(_db, 'households', _familyCode), { sessions }, { merge: true });
     toast('Device kicked — it will sign out on next sync', 'success');
     renderHouseholdMembers();
   } catch(e) {
