@@ -984,7 +984,8 @@ canvas{width:100%!important;display:block;}
     <button class="btn-submit" style="margin-bottom:12px;" onclick="copyExport()">📋 Copy to Clipboard</button>
     <div class="export-sheet" id="exportSheet"></div>
 
-    <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:24px;padding-top:14px;border-top:1px solid var(--border);">
+    <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:24px;padding-top:14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;align-items:center">
+      <button onclick="showWhatsNew(Object.keys(RELEASE_NOTES))" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 14px;color:var(--text);font-size:12px;font-weight:600;cursor:pointer">✨ Show release notes</button>
       <a href="https://github.com/reza021mohammadi/budget-tracker/releases" target="_blank" style="color:var(--muted);text-decoration:none">
         💶 Budget Tracker · <span id="appVersion">v1.8.0</span>
       </a>
@@ -1895,13 +1896,16 @@ const RELEASE_NOTES = {
 };
 function showWhatsNew(versionsToShow){
   const body = document.getElementById('whatsNewBody');
-  if (!body) return;
-  body.innerHTML = versionsToShow
+  const sheet = document.getElementById('whatsNewSheet');
+  if (!body || !sheet) { console.warn('What\'s-new sheet not found'); return; }
+  const versions = (versionsToShow && versionsToShow.length) ? versionsToShow : Object.keys(RELEASE_NOTES);
+  body.innerHTML = versions
     .filter(v => RELEASE_NOTES[v])
     .map(v => `<div style="margin-bottom:14px"><div style="font-weight:700;color:var(--accent);margin-bottom:6px">${v}</div><ul style="padding-left:18px;margin:0">${RELEASE_NOTES[v].map(line => `<li style="margin-bottom:4px">${line}</li>`).join('')}</ul></div>`)
     .join('');
-  document.getElementById('whatsNewSheet').classList.add('open');
+  sheet.classList.add('open');
 }
+window.showWhatsNew = showWhatsNew;
 function dismissWhatsNew(){
   document.getElementById('whatsNewSheet').classList.remove('open');
   localStorage.setItem('bgt_seen_version', APP_VERSION_CURRENT);
