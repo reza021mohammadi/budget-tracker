@@ -1376,8 +1376,20 @@ function startRealtimeSync() {
       if (wasFirstSync) { checkBackupHealth(); autoCloudBackup(); ensureSelfMemberInfo(); }
     },
     (err) => {
-      setSyncBadge('offline', '🔴 Offline');
       console.error('Realtime sync error:', err);
+      const denied = err && (err.code === 'permission-denied' || /permission|insufficient/i.test(err.message || ''));
+      if (denied) {
+        // Most likely the user was removed from the household by the admin.
+        // Stop the listener, clear local profile, redirect to the family setup screen.
+        if (_unsubscribe) { _unsubscribe(); _unsubscribe = null; }
+        _familyCode = null;
+        try { setDoc(doc(_db, 'users', _uid, 'profile', 'main'), { familyCode: '' }, { merge: true }).catch(() => {}); } catch(e) {}
+        setSyncBadge('', '');
+        showFamilySetup();
+        setFamilyStatus("You've been removed from this household. Create a new one or join another.", false);
+      } else {
+        setSyncBadge('offline', '🔴 Offline');
+      }
     }
   );
 }
@@ -2839,8 +2851,15 @@ async function renderHouseholdMembers(){
     const data = snap.data();
     const members = data.members || [];
     const info = data.memberInfo || {};
-    // Owner: explicit field, else first member, else creator (legacy)
-    const owner = data.owner || (members[0] || data.createdBy);
+    // Owner: explicit field, else creator (legacy), else first member.
+    // We trust createdBy over array order so the original creator stays admin.
+    let owner = data.owner || data.createdBy || members[0];
+    // Self-heal: if there's no explicit owner but the current user created the
+    // household, persist owner=_uid so it's stable across reads.
+    if (!data.owner && data.createdBy === _uid) {
+      try { await setDoc(doc(_db, 'households', _familyCode), { owner: _uid }, { merge: true }); } catch(e) {}
+      owner = _uid;
+    }
     const isOwner = _uid === owner;
     const header = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700">Members (${members.length})</div>
