@@ -2893,15 +2893,17 @@ async function renameMember(uid){
     const snap = await getDoc(doc(_db, 'households', _familyCode));
     if (!snap.exists()) return;
     const info = (snap.data() || {}).memberInfo || {};
-    const current = (info[uid] || {}).name || (info[uid] || {}).email || '';
-    const newName = prompt('Member name:', current);
+    const cur = info[uid] || {};
+    const newName = prompt('Display name (e.g. partner, work account):', cur.name || '');
     if (newName === null) return;
-    const updated = { ...(info[uid] || {}), name: newName.trim() };
+    const newEmail = prompt('Email (optional, helps you tell members apart):', cur.email || '');
+    if (newEmail === null) return;
+    const updated = { ...cur, name: newName.trim(), email: newEmail.trim() };
     await setDoc(doc(_db, 'households', _familyCode), { memberInfo: { [uid]: updated } }, { merge: true });
     renderHouseholdMembers();
-    toast('Member renamed', 'success');
+    toast('Member updated', 'success');
   } catch(e) {
-    toast('Rename failed: ' + (e.message || e), 'error');
+    toast('Update failed: ' + (e.message || e), 'error');
   }
 }
 window.renameMember = renameMember;
