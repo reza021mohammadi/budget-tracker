@@ -1375,7 +1375,7 @@ function startRealtimeSync() {
       _firstSyncDone = true;
       if (wasFirstSync) document.body.classList.remove('is-loading-cards');
       setSyncBadge('synced', '✅ Synced');
-      if (wasFirstSync) { checkBackupHealth(); autoCloudBackup(); ensureSelfMemberInfo(); }
+      if (wasFirstSync) { checkBackupHealth(); autoCloudBackup(); ensureSelfMemberInfo(); recordSession(); }
     },
     (err) => {
       console.error('Realtime sync error:', err);
@@ -2869,14 +2869,32 @@ async function renderHouseholdMembers(){
     const snap = await getDoc(doc(_db, 'households', _familyCode));
     if (!snap.exists()) { box.innerHTML = ''; return; }
     const data = snap.data();
-    // Pull push tokens once, group by UID — gives us per-member device list
+    // Build a per-UID device list from BOTH push tokens (tokens that have
+    // notifications enabled) AND the sessions map on the household doc
+    // (every device that has signed in). De-duplicate by UA fingerprint.
     let devicesByUid = {};
+    const fp = ua => { const m = (ua||'').match(/^[^)]+\)/); return m ? m[0] : (ua || ''); };
+    const sessions = data.sessions || {};
+    Object.values(sessions).forEach(s => {
+      if (!s || !s.uid) return;
+      (devicesByUid[s.uid] ||= []).push({
+        ua: s.ua || '',
+        createdAt: s.firstSeen || s.lastSeen || '',
+        lastSeen: s.lastSeen || '',
+        deviceId: s.deviceId || '',
+        push: false
+      });
+    });
     try {
       const tokSnap = await getDocs(collection(_db, 'households', _familyCode, 'pushTokens'));
       tokSnap.docs.forEach(d => {
         const t = d.data() || {};
         if (!t.uid) return;
-        (devicesByUid[t.uid] ||= []).push({ ua: t.ua || '', createdAt: t.createdAt || '' });
+        const list = (devicesByUid[t.uid] ||= []);
+        const key = fp(t.ua || '');
+        const match = list.find(x => fp(x.ua) === key);
+        if (match) match.push = true;
+        else list.push({ ua: t.ua || '', createdAt: t.createdAt || '', lastSeen: '', deviceId: '', push: true });
       });
     } catch(e) { /* ignore — rules may deny */ }
     const members = data.members || [];
@@ -2901,10 +2919,18 @@ async function renderHouseholdMembers(){
       const isOwnerRow = uid === owner;
       const display = m.name || m.email || (isMe ? (_auth.currentUser?.displayName || _auth.currentUser?.email || 'You') : 'Unnamed member');
       const subline = m.email && m.email !== display ? m.email : `id ${uid.slice(0, 8)}…`;
-      const devices = (devicesByUid[uid] || []).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      const devices = (devicesByUid[uid] || []).sort((a,b) => ((b.lastSeen||b.createdAt) || '').localeCompare((a.lastSeen||a.createdAt) || ''));
       const devicesHtml = devices.length ? `
         <div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">
-          ${devices.map(d => `<div style="font-size:10.5px;color:var(--muted);display:flex;align-items:center;gap:6px"><span>${describeUA(d.ua)}</span>${d.createdAt ? `<span style="opacity:.6">· enabled ${d.createdAt.slice(0,10)}</span>` : ''}</div>`).join('')}
+          ${devices.map(d => {
+            const stamp = d.lastSeen || d.createdAt;
+            const label = describeUA(d.ua) + (d.push ? ' · 🔔' : '');
+            const seen = stamp ? `last seen ${stamp.slice(0,10)}` : '';
+            return `<div style="font-size:10.5px;color:var(--muted);display:flex;align-items:center;gap:6px;justify-content:space-between">
+              <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}${seen?` <span style="opacity:.6">· ${seen}</span>`:''}</div>
+              ${isOwner && d.deviceId ? `<button onclick="removeDevice('${uid}','${d.deviceId}')" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:var(--muted);font-size:10px;cursor:pointer;flex-shrink:0">×</button>`:''}
+            </div>`;
+          }).join('')}
         </div>` : '';
       return `<div style="display:flex;flex-direction:column;background:var(--surface2);border-radius:8px;padding:7px 10px">
         <div style="display:flex;align-items:center;gap:8px">
@@ -2964,6 +2990,22 @@ async function removeMember(uid){
   }
 }
 window.removeMember = removeMember;
+async function removeDevice(uid, deviceId){
+  if (!confirm('Forget this device entry from the list?\n\n(Won\'t sign the user out — they\'ll register again next time they open the app.)')) return;
+  try {
+    const sessionKey = `${uid}_${deviceId}`;
+    const snap = await getDoc(doc(_db, 'households', _familyCode));
+    if (!snap.exists()) return;
+    const sessions = { ...((snap.data() || {}).sessions || {}) };
+    delete sessions[sessionKey];
+    await setDoc(doc(_db, 'households', _familyCode), { sessions }, { merge: true });
+    toast('Device entry removed', 'success');
+    renderHouseholdMembers();
+  } catch(e) {
+    toast('Failed: ' + (e.message || e), 'error');
+  }
+}
+window.removeDevice = removeDevice;
 async function claimAdmin(){
   if (!_db || !_familyCode || !_uid) return;
   // Hardcoded gate: only the configured admin email can claim ownership.
@@ -2982,6 +3024,33 @@ async function claimAdmin(){
   }
 }
 window.claimAdmin = claimAdmin;
+// Record (or refresh) a device-session entry for the current user. Lets the
+// admin see every device a household member has signed in with — not just
+// the ones that enabled push notifications.
+async function recordSession(){
+  if (!_db || !_familyCode || !_uid) return;
+  let deviceId = localStorage.getItem('bgt_did');
+  if (!deviceId) {
+    deviceId = (crypto.randomUUID && crypto.randomUUID()) || (Date.now() + '-' + Math.random().toString(36).slice(2));
+    localStorage.setItem('bgt_did', deviceId);
+  }
+  const sessionKey = `${_uid}_${deviceId}`;
+  const ua = navigator.userAgent.slice(0, 200);
+  const now = new Date().toISOString();
+  try {
+    const snap = await getDoc(doc(_db, 'households', _familyCode));
+    const existing = (snap.data()?.sessions || {})[sessionKey];
+    const entry = {
+      uid: _uid, deviceId, ua, lastSeen: now,
+      firstSeen: existing?.firstSeen || now
+    };
+    await setDoc(doc(_db, 'households', _familyCode), {
+      sessions: { [sessionKey]: entry }
+    }, { merge: true });
+  } catch(e) { console.warn('Session record failed:', e); }
+}
+window.recordSession = recordSession;
+
 // Backfill memberInfo for the current user if it's missing — runs after first sync
 async function ensureSelfMemberInfo(){
   if (!_db || !_familyCode || !_uid || !_auth?.currentUser) return;
