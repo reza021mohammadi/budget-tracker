@@ -2843,6 +2843,24 @@ function renderSettingsExtras(){
     renderHouseholdMembers();
   }
 }
+function describeUA(ua){
+  if (!ua) return 'Unknown device';
+  const dev = /iPhone/.test(ua) ? '📱 iPhone'
+            : /iPad/.test(ua) ? '📱 iPad'
+            : /Macintosh|Mac OS/.test(ua) ? '💻 Mac'
+            : /Android/.test(ua) ? '📱 Android'
+            : /Windows/.test(ua) ? '💻 Windows'
+            : /Linux/.test(ua) ? '💻 Linux'
+            : '💻 Browser';
+  const browser = /CriOS/.test(ua) ? 'Chrome'
+                : /FxiOS|Firefox/.test(ua) ? 'Firefox'
+                : /EdgiOS|Edg\//.test(ua) ? 'Edge'
+                : /Safari/.test(ua) && /Mobile/.test(ua) && !/Chrome/.test(ua) ? 'Safari'
+                : /Safari/.test(ua) && !/Chrome/.test(ua) ? 'Safari'
+                : /Chrome/.test(ua) ? 'Chrome'
+                : '';
+  return browser ? `${dev} · ${browser}` : dev;
+}
 async function renderHouseholdMembers(){
   const box = document.getElementById('householdMembersList');
   if (!box || !_db || !_familyCode) return;
@@ -2851,6 +2869,16 @@ async function renderHouseholdMembers(){
     const snap = await getDoc(doc(_db, 'households', _familyCode));
     if (!snap.exists()) { box.innerHTML = ''; return; }
     const data = snap.data();
+    // Pull push tokens once, group by UID — gives us per-member device list
+    let devicesByUid = {};
+    try {
+      const tokSnap = await getDocs(collection(_db, 'households', _familyCode, 'pushTokens'));
+      tokSnap.docs.forEach(d => {
+        const t = d.data() || {};
+        if (!t.uid) return;
+        (devicesByUid[t.uid] ||= []).push({ ua: t.ua || '', createdAt: t.createdAt || '' });
+      });
+    } catch(e) { /* ignore — rules may deny */ }
     const members = data.members || [];
     const info = data.memberInfo || {};
     // Owner: explicit field, else creator (legacy), else first member.
@@ -2873,14 +2901,22 @@ async function renderHouseholdMembers(){
       const isOwnerRow = uid === owner;
       const display = m.name || m.email || (isMe ? (_auth.currentUser?.displayName || _auth.currentUser?.email || 'You') : 'Unnamed member');
       const subline = m.email && m.email !== display ? m.email : `id ${uid.slice(0, 8)}…`;
-      return `<div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;padding:7px 10px">
-        <span style="font-size:14px;flex-shrink:0">${isOwnerRow ? '👑' : '👤'}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${display}${isMe ? ' <span style="font-size:10px;color:var(--accent);font-weight:700;margin-left:4px">YOU</span>' : ''}${isOwnerRow ? ' <span style="font-size:10px;color:var(--orange);font-weight:700;margin-left:4px">ADMIN</span>' : ''}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${subline}</div>
+      const devices = (devicesByUid[uid] || []).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      const devicesHtml = devices.length ? `
+        <div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">
+          ${devices.map(d => `<div style="font-size:10.5px;color:var(--muted);display:flex;align-items:center;gap:6px"><span>${describeUA(d.ua)}</span>${d.createdAt ? `<span style="opacity:.6">· enabled ${d.createdAt.slice(0,10)}</span>` : ''}</div>`).join('')}
+        </div>` : '';
+      return `<div style="display:flex;flex-direction:column;background:var(--surface2);border-radius:8px;padding:7px 10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px;flex-shrink:0">${isOwnerRow ? '👑' : '👤'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${display}${isMe ? ' <span style="font-size:10px;color:var(--accent);font-weight:700;margin-left:4px">YOU</span>' : ''}${isOwnerRow ? ' <span style="font-size:10px;color:var(--orange);font-weight:700;margin-left:4px">ADMIN</span>' : ''}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${subline}${devices.length ? ` · ${devices.length} device${devices.length===1?'':'s'}` : ''}</div>
+          </div>
+          ${isOwner ? `<button onclick="renameMember('${uid}')" title="Rename" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 7px;color:var(--muted);font-size:11px;cursor:pointer">✏️</button>` : ''}
+          ${isOwner && !isMe ? `<button onclick="removeMember('${uid}')" style="background:rgba(255,78,78,.1);border:1px solid rgba(255,78,78,.3);border-radius:6px;padding:4px 8px;color:var(--danger);font-size:11px;font-weight:700;cursor:pointer">Remove</button>` : ''}
         </div>
-        ${isOwner ? `<button onclick="renameMember('${uid}')" title="Rename" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 7px;color:var(--muted);font-size:11px;cursor:pointer">✏️</button>` : ''}
-        ${isOwner && !isMe ? `<button onclick="removeMember('${uid}')" style="background:rgba(255,78,78,.1);border:1px solid rgba(255,78,78,.3);border-radius:6px;padding:4px 8px;color:var(--danger);font-size:11px;font-weight:700;cursor:pointer">Remove</button>` : ''}
+        ${devicesHtml}
       </div>`;
     }).join('') + (!isOwner && (_auth?.currentUser?.email || '').toLowerCase() === ADMIN_EMAIL ? `<button onclick="claimAdmin()" style="margin-top:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer;width:100%">👑 Make me admin</button>` : '');
   } catch(e) {
