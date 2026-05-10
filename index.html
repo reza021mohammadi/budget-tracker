@@ -2039,8 +2039,7 @@ function animateValue(el, to, duration = 500){
 function toast(msg, type='info'){
   const stack = document.getElementById('toastStack');
   if (!stack) { console.log('[toast]', msg); return; }
-  // Critical-action haptics
-  if (type === 'success') else if (type === 'error') else if (type === 'warning') const el = document.createElement('div');
+  const el = document.createElement('div');
   el.className = 'toast toast-' + type;
   el.textContent = msg;
   stack.appendChild(el);
