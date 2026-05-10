@@ -1910,10 +1910,20 @@ window.dismissWhatsNew = dismissWhatsNew;
 function checkWhatsNew(){
   const seen = localStorage.getItem('bgt_seen_version');
   if (seen === APP_VERSION_CURRENT) return;
-  // First-ever install: mark as seen but skip the modal
-  if (!seen) { localStorage.setItem('bgt_seen_version', APP_VERSION_CURRENT); return; }
-  // Show all release notes from versions newer than what they last saw
   const allVersions = Object.keys(RELEASE_NOTES);
+  if (!seen) {
+    // No seen-version recorded yet. Check whether this device has any
+    // existing app data — if yes, treat it as an upgrade and show ALL
+    // release notes once. If completely fresh, mark as seen quietly.
+    const isExisting = !!localStorage.getItem('bgt_p') || !!localStorage.getItem('bgt_mb');
+    if (isExisting) {
+      setTimeout(() => showWhatsNew(allVersions), 800);
+    } else {
+      localStorage.setItem('bgt_seen_version', APP_VERSION_CURRENT);
+    }
+    return;
+  }
+  // Show release notes for versions newer than what they last saw
   const newer = allVersions.filter(v => v > seen);
   if (newer.length) setTimeout(() => showWhatsNew(newer), 800);
 }
