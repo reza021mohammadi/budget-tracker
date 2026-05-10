@@ -2880,7 +2880,7 @@ async function renderHouseholdMembers(){
         ${isOwner ? `<button onclick="renameMember('${uid}')" title="Rename" style="background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 7px;color:var(--muted);font-size:11px;cursor:pointer">✏️</button>` : ''}
         ${isOwner && !isMe ? `<button onclick="removeMember('${uid}')" style="background:rgba(255,78,78,.1);border:1px solid rgba(255,78,78,.3);border-radius:6px;padding:4px 8px;color:var(--danger);font-size:11px;font-weight:700;cursor:pointer">Remove</button>` : ''}
       </div>`;
-    }).join('');
+    }).join('') + (!isOwner ? `<button onclick="claimAdmin()" style="margin-top:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;font-weight:700;cursor:pointer;width:100%">👑 Make me admin</button>` : '');
   } catch(e) {
     box.innerHTML = `<div style="font-size:12px;color:var(--danger)">Failed to load members: ${e.message}</div>`;
   }
@@ -2924,6 +2924,18 @@ async function removeMember(uid){
   }
 }
 window.removeMember = removeMember;
+async function claimAdmin(){
+  if (!_db || !_familyCode || !_uid) return;
+  if (!confirm('Make yourself the admin of this household?\n\nThe previous admin (if any) becomes a regular member.')) return;
+  try {
+    await setDoc(doc(_db, 'households', _familyCode), { owner: _uid }, { merge: true });
+    toast('You are now the admin', 'success');
+    renderHouseholdMembers();
+  } catch(e) {
+    toast('Failed: ' + (e.message || e), 'error');
+  }
+}
+window.claimAdmin = claimAdmin;
 // Backfill memberInfo for the current user if it's missing — runs after first sync
 async function ensureSelfMemberInfo(){
   if (!_db || !_familyCode || !_uid || !_auth?.currentUser) return;
