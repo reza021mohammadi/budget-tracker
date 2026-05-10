@@ -2479,7 +2479,7 @@ function renderList(monthly, up){
     // so position:sticky on the header works across the whole list.
     const headerDiv = document.createElement('div');
     headerDiv.className = 'section-header';
-    headerDiv.style.cssText = 'cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;gap:8px';
+    headerDiv.style.cssText = 'cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;gap:8px;position:-webkit-sticky;position:sticky;top:0;background:var(--bg);z-index:10;padding:10px 0 8px;';
     headerDiv.onclick = () => toggleCatCollapse(cat);
     headerDiv.innerHTML = `<div class="section-label" style="margin-bottom:0;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${catLabel(cat)} <span style="opacity:.55;font-weight:500;margin-left:4px">· ${items.length}</span></div>
       ${categorySparkline(cat, sparklineColor)}
